@@ -7,6 +7,7 @@ import (
 	"start-feishubot/services"
 	"start-feishubot/services/openai"
 	"strings"
+	"time"
 
 	larkcard "github.com/larksuite/oapi-sdk-go/v3/card"
 
@@ -49,6 +50,8 @@ func judgeMsgType(event *larkim.P2MessageReceiveV1) (string, error) {
 }
 
 func (m MessageHandler) msgReceivedHandler(ctx context.Context, event *larkim.P2MessageReceiveV1) error {
+	before := time.Now()
+	fmt.Printf("[receive] messageid:%v, time: %v  message: %v \n", *event.Event.Message.MessageId, before, *event.Event.Message.Content)
 	handlerType := judgeChatType(event)
 	if handlerType == "otherChat" {
 		fmt.Println("unknown chat type")
@@ -75,6 +78,7 @@ func (m MessageHandler) msgReceivedHandler(ctx context.Context, event *larkim.P2
 	msgInfo := MsgInfo{
 		handlerType: handlerType,
 		msgType:     msgType,
+		CreateTime:  event.Event.Message.CreateTime,
 		msgId:       msgId,
 		chatId:      chatId,
 		qParsed:     strings.Trim(parseContent(*content), " "),
@@ -102,7 +106,7 @@ func (m MessageHandler) msgReceivedHandler(ctx context.Context, event *larkim.P2
 		&MessageAction{},         //消息处理
 
 	}
-	chain(data, actions...)
+	go chain(data, actions...)
 	return nil
 }
 

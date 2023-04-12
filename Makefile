@@ -2,12 +2,12 @@
 #
 # The release version is controlled from pkg/version
 
-TAG?=3.5.0
+TAG?=4.0.1
 NAME:=feishu-chatgpt
 DOCKER_REPOSITORY:=blacklee123
 DOCKER_IMAGE_NAME:=$(DOCKER_REPOSITORY)/$(NAME)
 GIT_COMMIT:=$(shell git describe --dirty --always)
-VERSION:=1.0.0
+VERSION:=4.0.1
 EXTRA_RUN_ARGS?=
 
 run:
@@ -37,7 +37,7 @@ build-charts:
 	helm package charts/*
 
 build-container:
-	docker build -t $(DOCKER_IMAGE_NAME):$(VERSION) .
+	docker buildx build --platform=linux/amd64 -t $(DOCKER_IMAGE_NAME):$(VERSION) .
 
 build-xx:
 	docker buildx build \

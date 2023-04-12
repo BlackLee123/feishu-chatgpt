@@ -95,6 +95,12 @@ func (gpt ChatGPT) doAPIRequestWithRetry(url, method string, bodyType requestBod
 	var response *http.Response
 	var retry int
 	for retry = 0; retry <= maxRetries; retry++ {
+		if retry >= 1 {
+			fmt.Printf("retry %d 次:", retry)
+			fmt.Println("--------------------")
+			fmt.Printf("req: %v, response: %v, err: %v\n", req, response, err)
+			fmt.Println("--------------------")
+		}
 		response, err = client.Do(req)
 		//fmt.Println("--------------------")
 		//fmt.Println("req", req.Header)
@@ -102,10 +108,10 @@ func (gpt ChatGPT) doAPIRequestWithRetry(url, method string, bodyType requestBod
 		// read body
 		if err != nil || response.StatusCode < 200 || response.StatusCode >= 300 {
 
-			body, _ := ioutil.ReadAll(response.Body)
-			fmt.Println("body", string(body))
+			// body, _ := ioutil.ReadAll(response.Body)
+			// fmt.Println("body", string(body))
 
-			gpt.Lb.SetAvailability(api.Key, false)
+			// gpt.Lb.SetAvailability(api.Key, false)
 			if retry == maxRetries {
 				break
 			}
@@ -139,7 +145,7 @@ func (gpt ChatGPT) doAPIRequestWithRetry(url, method string, bodyType requestBod
 func (gpt ChatGPT) sendRequestWithBodyType(link, method string, bodyType requestBodyType,
 	requestBody interface{}, responseBody interface{}) error {
 	var err error
-	client := &http.Client{Timeout: 110 * time.Second}
+	client := &http.Client{Timeout: 180 * time.Second}
 	if gpt.HttpProxy == "" {
 		err = gpt.doAPIRequestWithRetry(link, method, bodyType,
 			requestBody, responseBody, client, 3)
