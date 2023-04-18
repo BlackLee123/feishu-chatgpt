@@ -145,7 +145,7 @@ func (gpt ChatGPT) doAPIRequestWithRetry(url, method string, bodyType requestBod
 func (gpt ChatGPT) sendRequestWithBodyType(link, method string, bodyType requestBodyType,
 	requestBody interface{}, responseBody interface{}) error {
 	var err error
-	client := &http.Client{Timeout: 180 * time.Second}
+	client := &http.Client{Timeout: 600 * time.Second}
 	if gpt.HttpProxy == "" {
 		err = gpt.doAPIRequestWithRetry(link, method, bodyType,
 			requestBody, responseBody, client, 3)

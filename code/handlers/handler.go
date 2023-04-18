@@ -78,7 +78,6 @@ func (m MessageHandler) msgReceivedHandler(ctx context.Context, event *larkim.P2
 	msgInfo := MsgInfo{
 		handlerType: handlerType,
 		msgType:     msgType,
-		CreateTime:  event.Event.Message.CreateTime,
 		msgId:       msgId,
 		chatId:      chatId,
 		qParsed:     strings.Trim(parseContent(*content), " "),
