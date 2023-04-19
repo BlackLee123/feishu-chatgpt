@@ -2,11 +2,15 @@ package main
 
 import (
 	"context"
-	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
+	"fmt"
 	"log"
 	"start-feishubot/handlers"
 	"start-feishubot/initialization"
 	"start-feishubot/services/openai"
+
+	"github.com/getsentry/sentry-go"
+	sentrygin "github.com/getsentry/sentry-go/gin"
+	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 
 	larkcard "github.com/larksuite/oapi-sdk-go/v3/card"
 
@@ -23,6 +27,19 @@ var (
 )
 
 func main() {
+
+	// To initialize Sentry's handler, you need to initialize Sentry itself beforehand
+	if err := sentry.Init(sentry.ClientOptions{
+		Dsn:           "https://78731d69470e4f09ae1590be0ae2ec6d@o428088.ingest.sentry.io/4505040835837952",
+		EnableTracing: true,
+		// Set TracesSampleRate to 1.0 to capture 100%
+		// of transactions for performance monitoring.
+		// We recommend adjusting this value in production,
+		TracesSampleRate: 1.0,
+	}); err != nil {
+		fmt.Printf("Sentry initialization failed: %v\n", err)
+	}
+
 	initialization.InitRoleList()
 	pflag.Parse()
 	config := initialization.LoadConfig(*cfg)
@@ -41,7 +58,9 @@ func main() {
 		config.FeishuAppVerificationToken, config.FeishuAppEncryptKey,
 		handlers.CardHandler())
 
+	gin.ForceConsoleColor()
 	r := gin.Default()
+	r.Use(sentrygin.New(sentrygin.Options{}))
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "pong",

@@ -79,7 +79,7 @@ func (s *SessionService) GetMsg(sessionId string) (msg []openai.Messages) {
 }
 
 func (s *SessionService) SetMsg(sessionId string, msg []openai.Messages) {
-	maxLength := 4096
+	maxLength := 8192
 	maxCacheTime := time.Hour * 12
 
 	//限制对话上下文长度

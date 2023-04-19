@@ -7,7 +7,7 @@ import (
 const (
 	maxTokens   = 2000
 	temperature = 0.7
-	engine      = "gpt-4-0314"
+	engine      = "gpt-4"
 )
 
 type Messages struct {
