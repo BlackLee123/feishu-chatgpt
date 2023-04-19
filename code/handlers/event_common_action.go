@@ -3,10 +3,11 @@ package handlers
 import (
 	"context"
 	"fmt"
-	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 	"start-feishubot/initialization"
 	"start-feishubot/services/openai"
 	"start-feishubot/utils"
+
+	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 )
 
 type MsgInfo struct {
@@ -63,7 +64,7 @@ type EmptyAction struct { /*空消息*/
 }
 
 func (*EmptyAction) Execute(a *ActionInfo) bool {
-	if len(a.info.qParsed) == 0 {
+	if a.info.msgType == "text" && len(a.info.qParsed) == 0 {
 		sendMsg(*a.ctx, "🤖️：你想知道什么呢~", a.info.chatId)
 		fmt.Println("msgId", *a.info.msgId,
 			"message.text is empty")

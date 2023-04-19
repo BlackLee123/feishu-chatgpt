@@ -3,12 +3,13 @@ package handlers
 import (
 	"context"
 	"fmt"
-	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 	"os"
 	"start-feishubot/initialization"
 	"start-feishubot/services"
 	"start-feishubot/services/openai"
 	"start-feishubot/utils"
+
+	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 )
 
 type PicAction struct { /*图片*/
@@ -65,12 +66,14 @@ func (*PicAction) Execute(a *ActionInfo) bool {
 		//图片校验
 		err = openai.VerifyPngs([]string{f})
 		if err != nil {
-			replyMsg(*a.ctx, fmt.Sprintf("🤖️：无法解析图片，请发送原图并尝试重新操作～"),
+			fmt.Printf("err = openai.VerifyPngs([]string{f}): %v\n", err)
+			replyMsg(*a.ctx, fmt.Sprintf("🤖️：无法解析图片，请发送1:1方形图片并尝试重新操作～"),
 				a.info.msgId)
 			return false
 		}
 		bs64, err := a.handler.gpt.GenerateOneImageVariation(f, resolution)
 		if err != nil {
+			fmt.Printf("bs64, err := a.handler.gpt.GenerateOneImageVariation(f, resolution): %v\n", err)
 			replyMsg(*a.ctx, fmt.Sprintf(
 				"🤖️：图片生成失败，请稍后再试～\n错误信息: %v", err), a.info.msgId)
 			return false
