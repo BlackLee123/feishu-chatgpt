@@ -585,6 +585,44 @@ func sendMsg(ctx context.Context, msg string, chatId *string) error {
 	}
 	return nil
 }
+
+func alert(ctx context.Context, msg string) error {
+	//fmt.Println("sendMsg", msg, chatId)
+	msg, i := processMessage(msg)
+	if i != nil {
+		return i
+	}
+	client := initialization.GetLarkClient()
+	content := larkim.NewTextMsgBuilder().
+		Text(msg).
+		Build()
+
+	//fmt.Println("content", content)
+	// oc_ab7d028d1163c0575fbc0cc38e1e66e6   qaq
+	// oc_9f663609fa6912bad3a37ef97f58fdeb yh
+	resp, err := client.Im.Message.Create(ctx, larkim.NewCreateMessageReqBuilder().
+		ReceiveIdType(larkim.ReceiveIdTypeChatId).
+		Body(larkim.NewCreateMessageReqBodyBuilder().
+			MsgType(larkim.MsgTypeText).
+			ReceiveId("oc_9f663609fa6912bad3a37ef97f58fdeb").
+			Content(content).
+			Build()).
+		Build())
+
+	// 处理错误
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	// 服务端错误处理
+	if !resp.Success() {
+		fmt.Println(resp.Code, resp.Msg, resp.RequestId())
+		return err
+	}
+	return nil
+}
+
 func sendClearCacheCheckCard(ctx context.Context,
 	sessionId *string, msgId *string) {
 	newCard, _ := newSendCard(

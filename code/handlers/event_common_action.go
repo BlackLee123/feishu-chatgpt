@@ -8,6 +8,7 @@ import (
 	"start-feishubot/utils"
 
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
+	"go.uber.org/zap"
 )
 
 type MsgInfo struct {
@@ -25,6 +26,7 @@ type ActionInfo struct {
 	handler *MessageHandler
 	ctx     *context.Context
 	info    *MsgInfo
+	logger  *zap.Logger
 }
 
 type Action interface {

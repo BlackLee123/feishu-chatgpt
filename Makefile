@@ -2,12 +2,12 @@
 #
 # The release version is controlled from pkg/version
 
-TAG?=4.0.3
+TAG?=4.0.4
 NAME:=feishu-chatgpt
 DOCKER_REPOSITORY:=blacklee123
 DOCKER_IMAGE_NAME:=$(DOCKER_REPOSITORY)/$(NAME)
 GIT_COMMIT:=$(shell git describe --dirty --always)
-VERSION:=4.0.3
+VERSION:=4.0.4
 EXTRA_RUN_ARGS?=
 
 run:

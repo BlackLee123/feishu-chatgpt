@@ -3,27 +3,30 @@ package handlers
 import (
 	"fmt"
 	"start-feishubot/services/openai"
-	"time"
+
+	"go.uber.org/zap"
 )
 
 type MessageAction struct { /*消息*/
 }
 
 func (*MessageAction) Execute(a *ActionInfo) bool {
-	fmt.Printf("[MessageAction] messageid:%v \n", *a.info.msgId)
+	a.logger.Debug("[MessageAction] messageid:", zap.String("messageid", *a.info.msgId))
 	msg := a.handler.sessionCache.GetMsg(*a.info.sessionId)
 	msg = append(msg, openai.Messages{
 		Role: "user", Content: a.info.qParsed,
 	})
-	fmt.Printf("[开始处理] messageid:%v time: %v msg: %v \n", *a.info.msgId, time.Now(), msg)
+	a.logger.Debug("[开始处理]", zap.String("messageid", *a.info.msgId))
 	completions, err := a.handler.gpt.Completions(msg)
 	if err != nil {
-		fmt.Printf("============================== messageid:%v openai处理失败 ============================== \n", *a.info.msgId)
+		a.logger.Error("============================== openai处理失败 ============================== \n", zap.String("messageid", *a.info.msgId), zap.Error(err))
+
+		alert(*a.ctx, fmt.Sprintf("openai处理失败: messageId %v", *a.info.msgId))
 		replyMsg(*a.ctx, fmt.Sprintf(
 			"🤖️：消息机器人摆烂了，请稍后再试～\n错误信息: %v", err), a.info.msgId)
 		return false
 	}
-	fmt.Printf("[reply] messageid:%v time: %v reply: %v \n", *a.info.msgId, time.Now(), completions.Content)
+	a.logger.Info("[reply]", zap.String("messageid", *a.info.msgId), zap.String("reply", completions.Content))
 	msg = append(msg, completions)
 	a.handler.sessionCache.SetMsg(*a.info.sessionId, msg)
 	//if new topic
@@ -35,7 +38,7 @@ func (*MessageAction) Execute(a *ActionInfo) bool {
 	}
 	err = replyMsg(*a.ctx, completions.Content, a.info.msgId)
 	if err != nil {
-		fmt.Printf("============================== messageid:%v 消息回复失败 ============================== \n", *a.info.msgId)
+		a.logger.Error("============================== 消息回复失败 ==============================", zap.String("messageid", *a.info.msgId))
 		replyMsg(*a.ctx, fmt.Sprintf(
 			"🤖️：消息机器人摆烂了，请稍后再试～\n错误信息: %v", err), a.info.msgId)
 		return false

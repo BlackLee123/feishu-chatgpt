@@ -2,11 +2,13 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"start-feishubot/handlers"
 	"start-feishubot/initialization"
 	"start-feishubot/services/openai"
+
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/getsentry/sentry-go"
 	sentrygin "github.com/getsentry/sentry-go/gin"
@@ -27,6 +29,11 @@ var (
 )
 
 func main() {
+	// configure logging
+	logger, _ := initZap("debug")
+	defer logger.Sync()
+	stdLog := zap.RedirectStdLog(logger)
+	defer stdLog()
 
 	// To initialize Sentry's handler, you need to initialize Sentry itself beforehand
 	if err := sentry.Init(sentry.ClientOptions{
@@ -37,7 +44,7 @@ func main() {
 		// We recommend adjusting this value in production,
 		TracesSampleRate: 1.0,
 	}); err != nil {
-		fmt.Printf("Sentry initialization failed: %v\n", err)
+		logger.Error("Sentry initialization failed", zap.Error(err))
 	}
 
 	initialization.InitRoleList()
@@ -45,7 +52,7 @@ func main() {
 	config := initialization.LoadConfig(*cfg)
 	initialization.LoadLarkClient(*config)
 	gpt := openai.NewChatGPT(*config)
-	handlers.InitHandlers(gpt, *config)
+	handlers.InitHandlers(gpt, *config, logger)
 
 	eventHandler := dispatcher.NewEventDispatcher(
 		config.FeishuAppVerificationToken, config.FeishuAppEncryptKey).
@@ -77,4 +84,51 @@ func main() {
 		log.Fatalf("failed to start server: %v", err)
 	}
 
+}
+
+func initZap(logLevel string) (*zap.Logger, error) {
+	level := zap.NewAtomicLevelAt(zapcore.InfoLevel)
+	switch logLevel {
+	case "debug":
+		level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
+	case "info":
+		level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
+	case "warn":
+		level = zap.NewAtomicLevelAt(zapcore.WarnLevel)
+	case "error":
+		level = zap.NewAtomicLevelAt(zapcore.ErrorLevel)
+	case "fatal":
+		level = zap.NewAtomicLevelAt(zapcore.FatalLevel)
+	case "panic":
+		level = zap.NewAtomicLevelAt(zapcore.PanicLevel)
+	}
+
+	zapEncoderConfig := zapcore.EncoderConfig{
+		TimeKey:        "ts",
+		LevelKey:       "level",
+		NameKey:        "logger",
+		CallerKey:      "caller",
+		MessageKey:     "msg",
+		StacktraceKey:  "stacktrace",
+		LineEnding:     zapcore.DefaultLineEnding,
+		EncodeLevel:    zapcore.LowercaseLevelEncoder,
+		EncodeTime:     zapcore.ISO8601TimeEncoder,
+		EncodeDuration: zapcore.SecondsDurationEncoder,
+		EncodeCaller:   zapcore.ShortCallerEncoder,
+	}
+
+	zapConfig := zap.Config{
+		Level:       level,
+		Development: false,
+		Sampling: &zap.SamplingConfig{
+			Initial:    100,
+			Thereafter: 100,
+		},
+		Encoding:         "json",
+		EncoderConfig:    zapEncoderConfig,
+		OutputPaths:      []string{"stderr"},
+		ErrorOutputPaths: []string{"stderr"},
+	}
+
+	return zapConfig.Build()
 }

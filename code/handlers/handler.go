@@ -7,9 +7,9 @@ import (
 	"start-feishubot/services"
 	"start-feishubot/services/openai"
 	"strings"
-	"time"
 
 	larkcard "github.com/larksuite/oapi-sdk-go/v3/card"
+	"go.uber.org/zap"
 
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 )
@@ -29,6 +29,7 @@ type MessageHandler struct {
 	msgCache     services.MsgCacheInterface
 	gpt          *openai.ChatGPT
 	config       initialization.Config
+	logger       *zap.Logger
 }
 
 func (m MessageHandler) cardHandler(ctx context.Context,
@@ -50,18 +51,19 @@ func judgeMsgType(event *larkim.P2MessageReceiveV1) (string, error) {
 }
 
 func (m MessageHandler) msgReceivedHandler(ctx context.Context, event *larkim.P2MessageReceiveV1) error {
-	before := time.Now()
-	fmt.Printf("[receive] messageid:%v, time: %v  message: %v \n", *event.Event.Message.MessageId, before, *event.Event.Message.Content)
+
+	m.logger.Info("[receive]", zap.String("messageid", *event.Event.Message.MessageId), zap.String("message", *event.Event.Message.Content))
+	// alert(ctx, fmt.Sprintf("收到消息: messageId %v", *event.Event.Message.MessageId))
 	handlerType := judgeChatType(event)
 	if handlerType == "otherChat" {
-		fmt.Println("unknown chat type")
+		m.logger.Error("unknown chat type")
 		return nil
 	}
 	//fmt.Println(larkcore.Prettify(event.Event.Message))
 
 	msgType, err := judgeMsgType(event)
 	if err != nil {
-		fmt.Printf("error getting message type: %v\n", err)
+		m.logger.Error("error getting message type", zap.Error(err))
 		return nil
 	}
 
@@ -90,6 +92,7 @@ func (m MessageHandler) msgReceivedHandler(ctx context.Context, event *larkim.P2
 		ctx:     &ctx,
 		handler: &m,
 		info:    &msgInfo,
+		logger:  m.logger,
 	}
 	actions := []Action{
 		&ProcessedUniqueAction{}, //避免重复处理
@@ -112,12 +115,13 @@ func (m MessageHandler) msgReceivedHandler(ctx context.Context, event *larkim.P2
 var _ MessageHandlerInterface = (*MessageHandler)(nil)
 
 func NewMessageHandler(gpt *openai.ChatGPT,
-	config initialization.Config) MessageHandlerInterface {
+	config initialization.Config, logger *zap.Logger) MessageHandlerInterface {
 	return &MessageHandler{
 		sessionCache: services.GetSessionCache(),
 		msgCache:     services.GetMsgCache(),
 		gpt:          gpt,
 		config:       config,
+		logger:       logger,
 	}
 }
 
