@@ -110,8 +110,8 @@ func (gpt ChatGPT) doAPIRequestWithRetry(url, method string, bodyType requestBod
 			if response != nil && response.Body != nil {
 				body, _ := ioutil.ReadAll(response.Body)
 				fmt.Println("body", string(body))
-				// gpt.Lb.SetAvailability(api.Key, false)
 			}
+			gpt.Lb.SetAvailability(api.Key, false)
 			if retry == maxRetries {
 				break
 			}

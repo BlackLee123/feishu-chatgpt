@@ -56,6 +56,7 @@ func (m MessageHandler) msgReceivedHandler(ctx context.Context, event *larkim.P2
 	// alert(ctx, fmt.Sprintf("收到消息: messageId %v", *event.Event.Message.MessageId))
 	handlerType := judgeChatType(event)
 	if handlerType == "otherChat" {
+		replyMsg(ctx, "unknown chat type", event.Event.Message.MessageId)
 		m.logger.Error("unknown chat type")
 		return nil
 	}
@@ -63,6 +64,7 @@ func (m MessageHandler) msgReceivedHandler(ctx context.Context, event *larkim.P2
 
 	msgType, err := judgeMsgType(event)
 	if err != nil {
+		replyMsg(ctx, "🥹不支持的消息类型, 当前仅支持文本消息、图片消息、语音消息", event.Event.Message.MessageId)
 		m.logger.Error("error getting message type", zap.Error(err))
 		return nil
 	}
