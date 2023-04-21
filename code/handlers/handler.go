@@ -3,13 +3,13 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"start-feishubot/initialization"
 	"start-feishubot/services"
 	"start-feishubot/services/openai"
-	"strings"
 
 	larkcard "github.com/larksuite/oapi-sdk-go/v3/card"
-
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 )
 
@@ -45,7 +45,6 @@ func judgeMsgType(event *larkim.P2MessageReceiveV1) (string, error) {
 	default:
 		return "", fmt.Errorf("unknown message type: %v", *msgType)
 	}
-
 }
 
 func (m MessageHandler) msgReceivedHandler(ctx context.Context, event *larkim.P2MessageReceiveV1) error {
@@ -95,6 +94,7 @@ func (m MessageHandler) msgReceivedHandler(ctx context.Context, event *larkim.P2
 		&EmptyAction{},           //空消息处理
 		&ClearAction{},           //清除消息处理
 		&PicAction{},             //图片处理
+		&AIModeAction{},          //模式切换处理
 		&RoleListAction{},        //角色列表处理
 		&HelpAction{},            //帮助处理
 		&BalanceAction{},         //余额处理
@@ -124,4 +124,12 @@ func (m MessageHandler) judgeIfMentionMe(mention []*larkim.
 		return false
 	}
 	return *mention[0].Name == m.config.FeishuBotName
+}
+
+func AzureModeCheck(a *ActionInfo) bool {
+	if a.handler.config.AzureOn {
+		//sendMsg(*a.ctx, "Azure Openai 接口下，暂不支持此功能", a.info.chatId)
+		return false
+	}
+	return true
 }

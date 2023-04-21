@@ -2,8 +2,9 @@ package openai
 
 import (
 	"fmt"
-	"start-feishubot/initialization"
 	"testing"
+
+	"start-feishubot/initialization"
 )
 
 func TestCompletions(t *testing.T) {
@@ -16,7 +17,7 @@ func TestCompletions(t *testing.T) {
 
 	gpt := NewChatGPT(*config)
 
-	resp, err := gpt.Completions(msgs)
+	resp, err := gpt.Completions(msgs, Balance)
 	if err != nil {
 		t.Errorf("TestCompletions failed with error: %v", err)
 	}
@@ -108,6 +109,7 @@ func TestVariateOneImageWithJpg(t *testing.T) {
 	}
 }
 
+// 余额接口已经被废弃
 func TestChatGPT_GetBalance(t *testing.T) {
 	config := initialization.LoadConfig("../../config.yaml")
 	gpt := NewChatGPT(*config)

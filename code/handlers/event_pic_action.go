@@ -3,18 +3,24 @@ package handlers
 import (
 	"context"
 	"fmt"
-	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 	"os"
+
 	"start-feishubot/initialization"
 	"start-feishubot/services"
 	"start-feishubot/services/openai"
 	"start-feishubot/utils"
+
+	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 )
 
 type PicAction struct { /*图片*/
 }
 
 func (*PicAction) Execute(a *ActionInfo) bool {
+	check := AzureModeCheck(a)
+	if !check {
+		return true
+	}
 	// 开启图片创作模式
 	if _, foundPic := utils.EitherTrimEqual(a.info.qParsed,
 		"/picture", "图片创作"); foundPic {
@@ -49,7 +55,8 @@ func (*PicAction) Execute(a *ActionInfo) bool {
 		//fmt.Println(resp, err)
 		if err != nil {
 			//fmt.Println(err)
-			fmt.Sprintf("🤖️：图片下载失败，请稍后再试～\n 错误信息: %v", err)
+			replyMsg(*a.ctx, fmt.Sprintf("🤖️：图片下载失败，请稍后再试～\n 错误信息: %v", err),
+				a.info.msgId)
 			return false
 		}
 

@@ -3,10 +3,12 @@ package handlers
 import (
 	"context"
 	"fmt"
-	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
+
 	"start-feishubot/initialization"
 	"start-feishubot/services/openai"
 	"start-feishubot/utils"
+
+	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 )
 
 type MsgInfo struct {
@@ -147,6 +149,18 @@ func (*RoleListAction) Execute(a *ActionInfo) bool {
 		//	a.info.msgId, system)
 		tags := initialization.GetAllUniqueTags()
 		SendRoleTagsCard(*a.ctx, a.info.sessionId, a.info.msgId, *tags)
+		return false
+	}
+	return true
+}
+
+type AIModeAction struct { /*AI模式*/
+}
+
+func (*AIModeAction) Execute(a *ActionInfo) bool {
+	if _, foundMode := utils.EitherCutPrefix(a.info.qParsed,
+		"/ai_mode", "AI模式"); foundMode {
+		SendAIModeListsCard(*a.ctx, a.info.sessionId, a.info.msgId, openai.AIModeStrs)
 		return false
 	}
 	return true
