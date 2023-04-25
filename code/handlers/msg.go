@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"start-feishubot/initialization"
 	"start-feishubot/services"
@@ -25,6 +26,7 @@ var (
 	PicVarMoreKind     = CardKind("pic_var_more")     // 变量图片
 	RoleTagsChooseKind = CardKind("role_tags_choose") // 内置角色所属标签选择
 	RoleChooseKind     = CardKind("role_choose")      // 内置角色选择
+	AIModeChooseKind   = CardKind("ai_mode_choose")   // AI模式选择
 )
 
 var (
@@ -68,7 +70,7 @@ func replyCard(ctx context.Context,
 	// 服务端错误处理
 	if !resp.Success() {
 		fmt.Println(resp.Code, resp.Msg, resp.RequestId())
-		return err
+		return errors.New(resp.Msg)
 	}
 	return nil
 }
@@ -405,6 +407,32 @@ func withRoleBtn(sessionID *string, titles ...string) larkcard.
 	return actions
 }
 
+func withAIModeBtn(sessionID *string, aiModeStrs []string) larkcard.MessageCardElement {
+	var menuOptions []MenuOption
+	for _, label := range aiModeStrs {
+		menuOptions = append(menuOptions, MenuOption{
+			label: label,
+			value: label,
+		})
+	}
+
+	cancelMenu := newMenu("选择模式",
+		map[string]interface{}{
+			"value":     "0",
+			"kind":      AIModeChooseKind,
+			"sessionId": *sessionID,
+			"msgId":     *sessionID,
+		},
+		menuOptions...,
+	)
+
+	actions := larkcard.NewMessageCardAction().
+		Actions([]larkcard.MessageCardActionElement{cancelMenu}).
+		Layout(larkcard.MessageCardActionLayoutFlow.Ptr()).
+		Build()
+	return actions
+}
+
 func replyMsg(ctx context.Context, msg string, msgId *string) error {
 	msg, i := processMessage(msg)
 	if i != nil {
@@ -420,6 +448,34 @@ func replyMsg(ctx context.Context, msg string, msgId *string) error {
 		Body(larkim.NewReplyMessageReqBodyBuilder().
 			MsgType(larkim.MsgTypeText).
 			Uuid(uuid.New().String()).
+			Content(content).
+			Build()).
+		Build())
+
+	// 处理错误
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	// 服务端错误处理
+	if !resp.Success() {
+		fmt.Println(resp.Code, resp.Msg, resp.RequestId())
+		return errors.New(resp.Msg)
+	}
+	return nil
+}
+
+func replyAudio(ctx context.Context, fileKey string, msgId *string) error {
+	audioMessage := larkim.MessageAudio{
+		FileKey: fileKey,
+	}
+	client := initialization.GetLarkClient()
+	content, _ := audioMessage.String()
+	resp, err := client.Im.Message.Reply(ctx, larkim.NewReplyMessageReqBuilder().
+		MessageId(*msgId).
+		Body(larkim.NewReplyMessageReqBodyBuilder().
+			MsgType(larkim.MsgTypeAudio).
 			Content(content).
 			Build()).
 		Build())
@@ -462,7 +518,7 @@ func uploadImage(base64Str string) (*string, error) {
 	// 服务端错误处理
 	if !resp.Success() {
 		fmt.Println(resp.Code, resp.Msg, resp.RequestId())
-		return nil, err
+		return nil, errors.New(resp.Msg)
 	}
 	return resp.Data.ImageKey, nil
 }
@@ -496,7 +552,7 @@ func replyImage(ctx context.Context, ImageKey *string,
 	// 服务端错误处理
 	if !resp.Success() {
 		fmt.Println(resp.Code, resp.Msg, resp.RequestId())
-		return err
+		return errors.New(resp.Msg)
 	}
 	return nil
 
@@ -581,7 +637,7 @@ func sendMsg(ctx context.Context, msg string, chatId *string) error {
 	// 服务端错误处理
 	if !resp.Success() {
 		fmt.Println(resp.Code, resp.Msg, resp.RequestId())
-		return err
+		return errors.New(resp.Msg)
 	}
 	return nil
 }
@@ -685,6 +741,8 @@ func sendHelpCard(ctx context.Context,
 				"sessionId": *sessionId,
 			}, larkcard.MessageCardButtonTypeDanger)),
 		withSplitLine(),
+		withMainMd("🤖 **AI模式选择** \n"+" 文本回复 *AI模式* 或 */aimode*"),
+		withSplitLine(),
 		withMainMd("🛖 **内置角色列表** \n"+" 文本回复 *角色列表* 或 */roles*"),
 		withSplitLine(),
 		withMainMd("🥷 **角色扮演模式**\n文本回复*角色扮演* 或 */system*+空格+角色信息"),
@@ -772,5 +830,14 @@ func SendRoleListCard(ctx context.Context,
 		withHeader("🛖 角色列表"+" - "+roleTag, larkcard.TemplateIndigo),
 		withRoleBtn(sessionId, roleList...),
 		withNote("提醒：选择内置场景，快速进入角色扮演模式。"))
+	replyCard(ctx, msgId, newCard)
+}
+
+func SendAIModeListsCard(ctx context.Context,
+	sessionId *string, msgId *string, aiModeStrs []string) {
+	newCard, _ := newSendCard(
+		withHeader("🤖 AI模式选择", larkcard.TemplateIndigo),
+		withAIModeBtn(sessionId, aiModeStrs),
+		withNote("提醒：选择内置模式，让AI更好的理解您的需求。"))
 	replyCard(ctx, msgId, newCard)
 }

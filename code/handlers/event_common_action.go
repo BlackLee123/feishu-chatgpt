@@ -27,6 +27,7 @@ type ActionInfo struct {
 	ctx     *context.Context
 	info    *MsgInfo
 	logger  *zap.Logger
+	config  initialization.Config
 }
 
 type Action interface {
@@ -150,6 +151,18 @@ func (*RoleListAction) Execute(a *ActionInfo) bool {
 		//	a.info.msgId, system)
 		tags := initialization.GetAllUniqueTags()
 		SendRoleTagsCard(*a.ctx, a.info.sessionId, a.info.msgId, *tags)
+		return false
+	}
+	return true
+}
+
+type AIModeAction struct { /*AI模式*/
+}
+
+func (*AIModeAction) Execute(a *ActionInfo) bool {
+	if _, foundMode := utils.EitherCutPrefix(a.info.qParsed,
+		"/aimode", "AI模式"); foundMode {
+		SendAIModeListsCard(*a.ctx, a.info.sessionId, a.info.msgId, openai.AIModeStrs)
 		return false
 	}
 	return true
