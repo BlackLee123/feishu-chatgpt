@@ -95,6 +95,7 @@ func (m MessageHandler) msgReceivedHandler(ctx context.Context, event *larkim.P2
 		handler: &m,
 		info:    &msgInfo,
 		logger:  m.logger,
+		config:  m.config,
 	}
 	actions := []Action{
 		&ProcessedUniqueAction{}, //避免重复处理
@@ -103,6 +104,7 @@ func (m MessageHandler) msgReceivedHandler(ctx context.Context, event *larkim.P2
 		&EmptyAction{},           //空消息处理
 		&ClearAction{},           //清除消息处理
 		&PicAction{},             //图片处理
+		&AIModeAction{},          //模式切换处理
 		&RoleListAction{},        //角色列表处理
 		&HelpAction{},            //帮助处理
 		&BalanceAction{},         //余额处理

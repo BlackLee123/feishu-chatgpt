@@ -3,6 +3,7 @@ package initialization
 import (
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -36,6 +37,8 @@ func loadCertificate(config Config) (cert tls.Certificate, err error) {
 
 func startHTTPServer(config Config, r *gin.Engine) (err error) {
 	log.Printf("http server started: http://localhost:%d/webhook/event\n", config.HttpPort)
+	byteConfig, _ := json.Marshal(&config)
+	log.Printf("config: %s", byteConfig)
 	err = r.Run(fmt.Sprintf(":%d", config.HttpPort))
 	if err != nil {
 		return fmt.Errorf("failed to start http server: %v", err)

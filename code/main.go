@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"start-feishubot/handlers"
 	"start-feishubot/initialization"
 	"start-feishubot/services/openai"
@@ -73,6 +72,9 @@ func main() {
 			"message": "pong",
 		})
 	})
+	r.GET("/test", func(c *gin.Context) {
+		panic("y tho")
+	})
 	r.POST("/webhook/event",
 		sdkginext.NewEventHandlerFunc(eventHandler))
 	r.POST("/webhook/card",
@@ -81,7 +83,7 @@ func main() {
 
 	err := initialization.StartServer(*config, r)
 	if err != nil {
-		log.Fatalf("failed to start server: %v", err)
+		logger.Fatal("failed to start server", zap.Error(err))
 	}
 
 }

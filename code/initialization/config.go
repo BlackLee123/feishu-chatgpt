@@ -16,6 +16,7 @@ type Config struct {
 	FeishuAppVerificationToken string
 	FeishuBotName              string
 	OpenaiApiKeys              []string
+	OpenaiModel                string
 	HttpPort                   int
 	HttpsPort                  int
 	UseHttps                   bool
@@ -23,6 +24,9 @@ type Config struct {
 	KeyFile                    string
 	OpenaiApiUrl               string
 	HttpProxy                  string
+	XFAppId                    string
+	XFApiSecret                string
+	XFApiKey                   string
 }
 
 func LoadConfig(cfg string) *Config {
@@ -42,13 +46,16 @@ func LoadConfig(cfg string) *Config {
 		FeishuAppVerificationToken: getViperStringValue("APP_VERIFICATION_TOKEN", ""),
 		FeishuBotName:              getViperStringValue("BOT_NAME", ""),
 		OpenaiApiKeys:              getViperStringArray("OPENAI_KEY", nil),
+		OpenaiModel:                getViperStringValue("OPENAI_MODEL", "gpt-3.5-turbo"),
 		HttpPort:                   getViperIntValue("HTTP_PORT", 9000),
 		HttpsPort:                  getViperIntValue("HTTPS_PORT", 9001),
 		UseHttps:                   getViperBoolValue("USE_HTTPS", false),
 		CertFile:                   getViperStringValue("CERT_FILE", "cert.pem"),
 		KeyFile:                    getViperStringValue("KEY_FILE", "key.pem"),
 		OpenaiApiUrl:               getViperStringValue("API_URL", "https://api.openai.com"),
-		HttpProxy:                  getViperStringValue("HTTP_PROXY", ""),
+		XFAppId:                    getViperStringValue("XFAPP_ID", ""),
+		XFApiSecret:                getViperStringValue("XFAPP_SECRET", ""),
+		XFApiKey:                   getViperStringValue("XFAPP_KEY", ""),
 	}
 
 	return config
@@ -62,8 +69,8 @@ func getViperStringValue(key string, defaultValue string) string {
 	return value
 }
 
-//OPENAI_KEY: sk-xxx,sk-xxx,sk-xxx
-//result:[sk-xxx sk-xxx sk-xxx]
+// OPENAI_KEY: sk-xxx,sk-xxx,sk-xxx
+// result:[sk-xxx sk-xxx sk-xxx]
 func getViperStringArray(key string, defaultValue []string) []string {
 	value := viper.GetString(key)
 	if value == "" {

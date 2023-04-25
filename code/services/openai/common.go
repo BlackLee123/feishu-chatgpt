@@ -31,7 +31,7 @@ const (
 	nilBody
 )
 
-func (gpt ChatGPT) doAPIRequestWithRetry(url, method string, bodyType requestBodyType,
+func (gpt *ChatGPT) doAPIRequestWithRetry(url, method string, bodyType requestBodyType,
 	requestBody interface{}, responseBody interface{}, client *http.Client, maxRetries int) error {
 	var api *loadbalancer.API
 	var requestBodyData []byte
@@ -142,7 +142,7 @@ func (gpt ChatGPT) doAPIRequestWithRetry(url, method string, bodyType requestBod
 	return nil
 }
 
-func (gpt ChatGPT) sendRequestWithBodyType(link, method string, bodyType requestBodyType,
+func (gpt *ChatGPT) sendRequestWithBodyType(link, method string, bodyType requestBodyType,
 	requestBody interface{}, responseBody interface{}) error {
 	var err error
 	client := &http.Client{Timeout: 600 * time.Second}
