@@ -161,9 +161,7 @@ blacklee123/feishu-chatgpt:latest
         - im:message:send_as_bot(获取用户在群组中@机器人的消息)
         - im:chat:readonly(获取群组信息)
         - im:chat(获取与更新群组信息)
-
-
-5. 发布版本，等待企业管理员审核通过
+    6. 发布版本，等待企业管理员审核通过
 
 ## 加入答疑群
 

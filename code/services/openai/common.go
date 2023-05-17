@@ -100,6 +100,7 @@ func (gpt *ChatGPT) doAPIRequestWithRetry(url, method string, bodyType requestBo
 			fmt.Println("--------------------")
 			fmt.Printf("req: %v, response: %v, err: %v\n", req, response, err)
 			fmt.Println("--------------------")
+			req.Body = ioutil.NopCloser(bytes.NewReader(requestBodyData))
 		}
 		response, err = client.Do(req)
 		//fmt.Println("--------------------")
