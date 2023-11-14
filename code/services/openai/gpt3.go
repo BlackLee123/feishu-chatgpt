@@ -2,6 +2,7 @@ package openai
 
 import (
 	"errors"
+	"start-feishubot/logger"
 	"strings"
 
 	"github.com/pandodao/tokenizer-go"
@@ -30,10 +31,6 @@ var AIModeStrs = []string{
 	"创意",
 }
 
-const (
-	maxTokens = 2000
-)
-
 type Messages struct {
 	Role    string `json:"role"`
 	Content string `json:"content"`
@@ -48,6 +45,7 @@ type ChatGPTResponseBody struct {
 	Choices []ChatGPTChoiceItem    `json:"choices"`
 	Usage   map[string]interface{} `json:"usage"`
 }
+
 type ChatGPTChoiceItem struct {
 	Message      Messages `json:"message"`
 	Index        int      `json:"index"`
@@ -70,24 +68,30 @@ func (msg *Messages) CalculateTokenLength() int {
 	return tokenizer.MustCalToken(text)
 }
 
-func (gpt *ChatGPT) Completions(msg []Messages, aiMode AIMode, model string) (resp Messages, err error) {
+func (gpt *ChatGPT) Completions(msg []Messages, aiMode AIMode) (resp Messages,
+	err error) {
 	requestBody := ChatGPTRequestBody{
-		Model:            model,
+		Model:            gpt.Model,
 		Messages:         msg,
-		MaxTokens:        maxTokens,
+		MaxTokens:        gpt.MaxTokens,
 		Temperature:      aiMode,
 		TopP:             1,
 		FrequencyPenalty: 0,
 		PresencePenalty:  0,
 	}
 	gptResponseBody := &ChatGPTResponseBody{}
-	err = gpt.sendRequestWithBodyType(gpt.ApiUrl+"/v1/chat/completions", "POST",
-		jsonBody,
-		requestBody, gptResponseBody)
-
+	url := gpt.FullUrl("chat/completions")
+	//fmt.Println(url)
+	logger.Debug(url)
+	logger.Debug("request body ", requestBody)
+	if url == "" {
+		return resp, errors.New("无法获取openai请求地址")
+	}
+	err = gpt.sendRequestWithBodyType(url, "POST", jsonBody, requestBody, gptResponseBody)
 	if err == nil && len(gptResponseBody.Choices) > 0 {
 		resp = gptResponseBody.Choices[0].Message
 	} else {
+		logger.Errorf("ERROR %v", err)
 		resp = Messages{}
 		err = errors.New("openai 请求失败")
 	}

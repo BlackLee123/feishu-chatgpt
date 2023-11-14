@@ -6,6 +6,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"start-feishubot/logger"
+
 	"start-feishubot/initialization"
 	"start-feishubot/services"
 	"start-feishubot/services/openai"
@@ -69,7 +71,7 @@ func replyCard(ctx context.Context,
 
 	// 服务端错误处理
 	if !resp.Success() {
-		fmt.Println(resp.Code, resp.Msg, resp.RequestId())
+		logger.Errorf("服务端错误 resp code[%v], msg [%v] requestId [%v] ", resp.Code, resp.Msg, resp.RequestId())
 		return errors.New(resp.Msg)
 	}
 	return nil
@@ -85,9 +87,7 @@ func newSendCard(
 		UpdateMulti(false).
 		Build()
 	var aElementPool []larkcard.MessageCardElement
-	for _, element := range elements {
-		aElementPool = append(aElementPool, element)
-	}
+	aElementPool = append(aElementPool, elements...)
 	// 卡片消息体
 	cardContent, err := larkcard.NewMessageCard().
 		Config(config).
@@ -108,9 +108,7 @@ func newSimpleSendCard(
 		UpdateMulti(false).
 		Build()
 	var aElementPool []larkcard.MessageCardElement
-	for _, element := range elements {
-		aElementPool = append(aElementPool, element)
-	}
+	aElementPool = append(aElementPool, elements...)
 	// 卡片消息体
 	cardContent, err := larkcard.NewMessageCard().
 		Config(config).
@@ -353,6 +351,7 @@ func withPicResolutionBtn(sessionID *string) larkcard.
 		Build()
 	return actions
 }
+
 func withRoleTagsBtn(sessionID *string, tags ...string) larkcard.
 	MessageCardElement {
 	var menuOptions []MenuOption
@@ -726,11 +725,20 @@ func sendNewTopicCard(ctx context.Context,
 	replyCard(ctx, msgId, newCard)
 }
 
+func sendOldTopicCard(ctx context.Context,
+	sessionId *string, msgId *string, content string) {
+	newCard, _ := newSendCard(
+		withHeader("🔃️ 上下文的话题", larkcard.TemplateBlue),
+		withMainText(content),
+		withNote("提醒：点击对话框参与回复，可保持话题连贯"))
+	replyCard(ctx, msgId, newCard)
+}
+
 func sendHelpCard(ctx context.Context,
 	sessionId *string, msgId *string) {
 	newCard, _ := newSendCard(
 		withHeader("🎒需要帮助吗？", larkcard.TemplateBlue),
-		withMainMd("**我是ChatGPT-4，一款基于chatGpt技术的智能聊天机器人！**"),
+		withMainMd("**我是小飞机，一款基于chatGpt技术的智能聊天机器人！**"),
 		withSplitLine(),
 		withMdAndExtraBtn(
 			"** 🆑 清除话题上下文**\n文本回复 *清除* 或 */clear*",
@@ -741,7 +749,7 @@ func sendHelpCard(ctx context.Context,
 				"sessionId": *sessionId,
 			}, larkcard.MessageCardButtonTypeDanger)),
 		withSplitLine(),
-		withMainMd("🤖 **AI模式选择** \n"+" 文本回复 *AI模式* 或 */aimode*"),
+		withMainMd("🤖 **AI模式选择** \n"+" 文本回复 *AI模式* 或 */ai_mode*"),
 		withSplitLine(),
 		withMainMd("🛖 **内置角色列表** \n"+" 文本回复 *角色列表* 或 */roles*"),
 		withSplitLine(),
@@ -821,7 +829,10 @@ func SendRoleTagsCard(ctx context.Context,
 		withHeader("🛖 请选择角色类别", larkcard.TemplateIndigo),
 		withRoleTagsBtn(sessionId, roleTags...),
 		withNote("提醒：选择角色所属分类，以便我们为您推荐更多相关角色。"))
-	replyCard(ctx, msgId, newCard)
+	err := replyCard(ctx, msgId, newCard)
+	if err != nil {
+		logger.Errorf("选择角色出错 %v", err)
+	}
 }
 
 func SendRoleListCard(ctx context.Context,
@@ -840,4 +851,153 @@ func SendAIModeListsCard(ctx context.Context,
 		withAIModeBtn(sessionId, aiModeStrs),
 		withNote("提醒：选择内置模式，让AI更好的理解您的需求。"))
 	replyCard(ctx, msgId, newCard)
+}
+
+func sendOnProcessCard(ctx context.Context,
+	sessionId *string, msgId *string, ifNewTopic bool) (*string,
+	error) {
+	var newCard string
+	if ifNewTopic {
+		newCard, _ = newSendCard(
+			withHeader("👻️ 已开启新的话题", larkcard.TemplateBlue),
+			withNote("正在思考，请稍等..."))
+	} else {
+		newCard, _ = newSendCard(
+			withHeader("🔃️ 上下文的话题", larkcard.TemplateBlue),
+			withNote("正在思考，请稍等..."))
+	}
+
+	id, err := replyCardWithBackId(ctx, msgId, newCard)
+	if err != nil {
+		return nil, err
+	}
+	return id, nil
+}
+
+func updateTextCard(ctx context.Context, msg string,
+	msgId *string, ifNewTopic bool) error {
+	var newCard string
+	if ifNewTopic {
+		newCard, _ = newSendCard(
+			withHeader("👻️ 已开启新的话题", larkcard.TemplateBlue),
+			withMainText(msg),
+			withNote("正在生成，请稍等..."))
+	} else {
+		newCard, _ = newSendCard(
+			withHeader("🔃️ 上下文的话题", larkcard.TemplateBlue),
+			withMainText(msg),
+			withNote("正在生成，请稍等..."))
+	}
+	err := PatchCard(ctx, msgId, newCard)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+func updateFinalCard(
+	ctx context.Context,
+	msg string,
+	msgId *string,
+	ifNewSession bool,
+) error {
+	var newCard string
+	if ifNewSession {
+		newCard, _ = newSendCard(
+			withHeader("👻️ 已开启新的话题", larkcard.TemplateBlue),
+			withMainText(msg),
+			withNote("已完成，您可以继续提问或者选择其他功能。"))
+	} else {
+		newCard, _ = newSendCard(
+			withHeader("🔃️ 上下文的话题", larkcard.TemplateBlue),
+
+			withMainText(msg),
+			withNote("已完成，您可以继续提问或者选择其他功能。"))
+	}
+	err := PatchCard(ctx, msgId, newCard)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func newSendCardWithOutHeader(
+	elements ...larkcard.MessageCardElement) (string, error) {
+	config := larkcard.NewMessageCardConfig().
+		WideScreenMode(false).
+		EnableForward(true).
+		UpdateMulti(true).
+		Build()
+	var aElementPool []larkcard.MessageCardElement
+	aElementPool = append(aElementPool, elements...)
+	// 卡片消息体
+	cardContent, err := larkcard.NewMessageCard().
+		Config(config).
+		Elements(
+			aElementPool,
+		).
+		String()
+	return cardContent, err
+}
+
+func PatchCard(ctx context.Context, msgId *string,
+	cardContent string) error {
+	//fmt.Println("sendMsg", msg, chatId)
+	client := initialization.GetLarkClient()
+	//content := larkim.NewTextMsgBuilder().
+	//	Text(msg).
+	//	Build()
+
+	//fmt.Println("content", content)
+
+	resp, err := client.Im.Message.Patch(ctx, larkim.NewPatchMessageReqBuilder().
+		MessageId(*msgId).
+		Body(larkim.NewPatchMessageReqBodyBuilder().
+			Content(cardContent).
+			Build()).
+		Build())
+
+	// 处理错误
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
+	// 服务端错误处理
+	if !resp.Success() {
+		fmt.Println(resp.Code, resp.Msg, resp.RequestId())
+		return errors.New(resp.Msg)
+	}
+	return nil
+}
+
+func replyCardWithBackId(ctx context.Context,
+	msgId *string,
+	cardContent string,
+) (*string, error) {
+	client := initialization.GetLarkClient()
+	resp, err := client.Im.Message.Reply(ctx, larkim.NewReplyMessageReqBuilder().
+		MessageId(*msgId).
+		Body(larkim.NewReplyMessageReqBodyBuilder().
+			MsgType(larkim.MsgTypeInteractive).
+			Uuid(uuid.New().String()).
+			Content(cardContent).
+			Build()).
+		Build())
+
+	// 处理错误
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	// 服务端错误处理
+	if !resp.Success() {
+		fmt.Println(resp.Code, resp.Msg, resp.RequestId())
+		return nil, errors.New(resp.Msg)
+	}
+
+	//ctx = context.WithValue(ctx, "SendMsgId", *resp.Data.MessageId)
+	//SendMsgId := ctx.Value("SendMsgId")
+	//pp.Println(SendMsgId)
+	return resp.Data.MessageId, nil
 }

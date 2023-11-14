@@ -23,10 +23,6 @@ import (
 	"github.com/larksuite/oapi-sdk-go/v3/event/dispatcher"
 )
 
-var (
-	cfg = pflag.StringP("config", "c", "./config.yaml", "apiserver config file path.")
-)
-
 func main() {
 	// configure logging
 	logger, _ := initZap("debug")
@@ -48,7 +44,7 @@ func main() {
 
 	initialization.InitRoleList()
 	pflag.Parse()
-	config := initialization.LoadConfig(*cfg)
+	config := initialization.GetConfig()
 	initialization.LoadLarkClient(*config)
 	gpt := openai.NewChatGPT(*config)
 	handlers.InitHandlers(gpt, *config, logger)

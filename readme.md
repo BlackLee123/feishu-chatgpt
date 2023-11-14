@@ -85,7 +85,7 @@ docker run -d --name feishu-chatgpt -p 9000:9000 \
 --env APP_ENCRYPT_KEY=xxx \
 --env APP_VERIFICATION_TOKEN=xxx \
 --env BOT_NAME=chatGpt \
---env OPENAI_MODEL="gp4-4" \
+--env OPENAI_MODEL="gpt-4" \
 --env OPENAI_KEY="sk-xxx1,sk-xxx2,sk-xxx3" \
 --env API_URL="https://api.openai.com" \
 --env HTTP_PROXY="" \
@@ -95,6 +95,8 @@ docker run -d --name feishu-chatgpt -p 9000:9000 \
 --env XFAPP_ID="科大讯飞开发平台APPID;不需要语音回复可不填写" \
 --env XFAPP_SECRET="科大讯飞开发平台APISecret;不需要语音回复可不填写" \
 --env XFAPP_KEY="科大讯飞开发平台APIKey;不需要语音回复可不填写" \
+--env OpenaiMaxTokens="2000" \
+--env STREAM_MODE="true"
 blacklee123/feishu-chatgpt:latest
 ```
 
