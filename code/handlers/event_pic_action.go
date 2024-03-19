@@ -16,6 +16,10 @@ type PicAction struct { /*图片*/
 }
 
 func (*PicAction) Execute(a *ActionInfo) bool {
+	check := AzureModeCheck(a)
+	if !check {
+		return true
+	}
 	// 开启图片创作模式
 	if _, foundPic := utils.EitherTrimEqual(a.info.qParsed,
 		"/picture", "图片创作"); foundPic {
@@ -23,7 +27,7 @@ func (*PicAction) Execute(a *ActionInfo) bool {
 		a.handler.sessionCache.SetMode(*a.info.sessionId,
 			services.ModePicCreate)
 		a.handler.sessionCache.SetPicResolution(*a.info.sessionId,
-			services.Resolution256)
+			services.Resolution1024)
 		sendPicCreateInstructionCard(*a.ctx, a.info.sessionId,
 			a.info.msgId)
 		return false
@@ -50,7 +54,8 @@ func (*PicAction) Execute(a *ActionInfo) bool {
 		//fmt.Println(resp, err)
 		if err != nil {
 			//fmt.Println(err)
-			fmt.Sprintf("🤖️：图片下载失败，请稍后再试～\n 错误信息: %v", err)
+			replyMsg(*a.ctx, fmt.Sprintf("🤖️：图片下载失败，请稍后再试～\n 错误信息: %v", err),
+				a.info.msgId)
 			return false
 		}
 
@@ -66,14 +71,12 @@ func (*PicAction) Execute(a *ActionInfo) bool {
 		//图片校验
 		err = openai.VerifyPngs([]string{f})
 		if err != nil {
-			fmt.Printf("err = openai.VerifyPngs([]string{f}): %v\n", err)
-			replyMsg(*a.ctx, fmt.Sprintf("🤖️：无法解析图片，请发送1:1方形图片并尝试重新操作～"),
+			replyMsg(*a.ctx, fmt.Sprintf("🤖️：无法解析图片，请发送原图并尝试重新操作～"),
 				a.info.msgId)
 			return false
 		}
 		bs64, err := a.handler.gpt.GenerateOneImageVariation(f, resolution)
 		if err != nil {
-			fmt.Printf("bs64, err := a.handler.gpt.GenerateOneImageVariation(f, resolution): %v\n", err)
 			replyMsg(*a.ctx, fmt.Sprintf(
 				"🤖️：图片生成失败，请稍后再试～\n错误信息: %v", err), a.info.msgId)
 			return false
@@ -87,8 +90,10 @@ func (*PicAction) Execute(a *ActionInfo) bool {
 	if mode == services.ModePicCreate {
 		resolution := a.handler.sessionCache.GetPicResolution(*a.
 			info.sessionId)
+		style := a.handler.sessionCache.GetPicStyle(*a.
+			info.sessionId)
 		bs64, err := a.handler.gpt.GenerateOneImage(a.info.qParsed,
-			resolution)
+			resolution, style)
 		if err != nil {
 			replyMsg(*a.ctx, fmt.Sprintf(
 				"🤖️：图片生成失败，请稍后再试～\n错误信息: %v", err), a.info.msgId)

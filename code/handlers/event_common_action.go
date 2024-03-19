@@ -19,6 +19,7 @@ type MsgInfo struct {
 	qParsed     string
 	fileKey     string
 	imageKey    string
+	imageKeys   []string // post 消息卡片中的图片组
 	sessionId   *string
 	mention     []*larkim.MentionEvent
 }
@@ -67,10 +68,11 @@ type EmptyAction struct { /*空消息*/
 }
 
 func (*EmptyAction) Execute(a *ActionInfo) bool {
-	if a.info.msgType == "text" && len(a.info.qParsed) == 0 {
+	if len(a.info.qParsed) == 0 {
 		sendMsg(*a.ctx, "🤖️：你想知道什么呢~", a.info.chatId)
 		fmt.Println("msgId", *a.info.msgId,
 			"message.text is empty")
+
 		return false
 	}
 	return true
@@ -156,12 +158,12 @@ func (*RoleListAction) Execute(a *ActionInfo) bool {
 	return true
 }
 
-type AIModeAction struct { /*AI模式*/
+type AIModeAction struct { /*发散模式*/
 }
 
 func (*AIModeAction) Execute(a *ActionInfo) bool {
 	if _, foundMode := utils.EitherCutPrefix(a.info.qParsed,
-		"/aimode", "AI模式"); foundMode {
+		"/ai_mode", "发散模式"); foundMode {
 		SendAIModeListsCard(*a.ctx, a.info.sessionId, a.info.msgId, openai.AIModeStrs)
 		return false
 	}

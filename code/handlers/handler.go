@@ -3,10 +3,11 @@ package handlers
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"start-feishubot/initialization"
 	"start-feishubot/services"
 	"start-feishubot/services/openai"
-	"strings"
 
 	larkcard "github.com/larksuite/oapi-sdk-go/v3/card"
 	"go.uber.org/zap"
@@ -87,6 +88,7 @@ func (m MessageHandler) msgReceivedHandler(ctx context.Context, event *larkim.P2
 		qParsed:     strings.Trim(parseContent(*content, msgType), " "),
 		fileKey:     parseFileKey(*content),
 		imageKey:    parseImageKey(*content),
+		imageKeys:   parsePostImageKeys(*content),
 		sessionId:   sessionId,
 		mention:     mention,
 	}
@@ -101,8 +103,8 @@ func (m MessageHandler) msgReceivedHandler(ctx context.Context, event *larkim.P2
 		&ProcessedUniqueAction{}, //避免重复处理
 		&ProcessMentionAction{},  //判断机器人是否应该被调用
 		&AudioAction{},           //语音处理
-		&EmptyAction{},           //空消息处理
 		&ClearAction{},           //清除消息处理
+		&VisionAction{},          //图片推理处理
 		&PicAction{},             //图片处理
 		&AIModeAction{},          //模式切换处理
 		&RoleListAction{},        //角色列表处理
@@ -110,9 +112,10 @@ func (m MessageHandler) msgReceivedHandler(ctx context.Context, event *larkim.P2
 		&BalanceAction{},         //余额处理
 		&RolePlayAction{},        //角色扮演处理
 		&MessageAction{},         //消息处理
+		&EmptyAction{},           //空消息处理
 		&StreamMessageAction{},   //流式消息处理
 	}
-	go chain(data, actions...)
+	chain(data, actions...)
 	return nil
 }
 
@@ -135,4 +138,12 @@ func (m MessageHandler) judgeIfMentionMe(mention []*larkim.
 		return false
 	}
 	return *mention[0].Name == m.config.FeishuBotName
+}
+
+func AzureModeCheck(a *ActionInfo) bool {
+	if a.handler.config.AzureOn {
+		//sendMsg(*a.ctx, "Azure Openai 接口下，暂不支持此功能", a.info.chatId)
+		return false
+	}
+	return true
 }

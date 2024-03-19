@@ -2,10 +2,9 @@ package logger
 
 import (
 	"bytes"
-	"strings"
-
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
+	"strings"
 )
 
 var logger = logrus.New()

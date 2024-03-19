@@ -4,9 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
-
 	go_openai "github.com/sashabaranov/go-openai"
+	"io"
 )
 
 func (c *ChatGPT) StreamChat(ctx context.Context,

@@ -19,11 +19,13 @@ func NewCardHandler(m MessageHandler) CardHandlerFunc {
 	handlers := []CardHandlerMeta{
 		NewClearCardHandler,
 		NewPicResolutionHandler,
+		NewVisionResolutionHandler,
 		NewPicTextMoreHandler,
 		NewPicModeChangeHandler,
 		NewRoleTagCardHandler,
 		NewRoleCardHandler,
 		NewAIModeCardHandler,
+		NewVisionModeChangeHandler,
 	}
 
 	return func(ctx context.Context, cardAction *larkcard.CardAction) (interface{}, error) {

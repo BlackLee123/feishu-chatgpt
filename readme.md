@@ -96,7 +96,7 @@ docker run -d --name feishu-chatgpt -p 9000:9000 \
 --env XFAPP_SECRET="科大讯飞开发平台APISecret;不需要语音回复可不填写" \
 --env XFAPP_KEY="科大讯飞开发平台APIKey;不需要语音回复可不填写" \
 --env OpenaiMaxTokens="2000" \
---env STREAM_MODE="true"
+--env STREAM_MODE="true" \
 blacklee123/feishu-chatgpt:latest
 ```
 
