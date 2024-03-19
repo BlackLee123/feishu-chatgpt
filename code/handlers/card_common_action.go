@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-
 	larkcard "github.com/larksuite/oapi-sdk-go/v3/card"
 )
 
@@ -19,11 +18,13 @@ func NewCardHandler(m MessageHandler) CardHandlerFunc {
 	handlers := []CardHandlerMeta{
 		NewClearCardHandler,
 		NewPicResolutionHandler,
+		NewVisionResolutionHandler,
 		NewPicTextMoreHandler,
 		NewPicModeChangeHandler,
 		NewRoleTagCardHandler,
 		NewRoleCardHandler,
 		NewAIModeCardHandler,
+		NewVisionModeChangeHandler,
 	}
 
 	return func(ctx context.Context, cardAction *larkcard.CardAction) (interface{}, error) {
@@ -34,6 +35,7 @@ func NewCardHandler(m MessageHandler) CardHandlerFunc {
 			return nil, err
 		}
 		//pp.Println(cardMsg)
+		//logger.Debug("cardMsg ", cardMsg)
 		for _, handler := range handlers {
 			h := handler(cardMsg, m)
 			i, err := h(ctx, cardAction)

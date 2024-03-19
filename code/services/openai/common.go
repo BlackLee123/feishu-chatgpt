@@ -9,15 +9,18 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/url"
+	"start-feishubot/initialization"
+	"start-feishubot/logger"
+	"start-feishubot/services/loadbalancer"
 	"strings"
 	"time"
-
-	"start-feishubot/initialization"
-	"start-feishubot/services/loadbalancer"
 )
 
 type PlatForm string
 
+const (
+	MaxRetries = 3
+)
 const (
 	AzureApiUrlV1 = "openai.azure.com/openai/deployments/"
 )
@@ -39,6 +42,8 @@ type ChatGPT struct {
 	ApiKey      []string
 	ApiUrl      string
 	HttpProxy   string
+	Model       string
+	MaxTokens   int
 	Platform    PlatForm
 	AzureConfig AzureConfig
 }
@@ -102,6 +107,7 @@ func (gpt *ChatGPT) doAPIRequestWithRetry(url, method string,
 		return errors.New("no available API")
 	}
 
+	//fmt.Println("requestBodyData", string(requestBodyData))
 	req, err := http.NewRequest(method, url, bytes.NewReader(requestBodyData))
 	if err != nil {
 		return err
@@ -128,6 +134,9 @@ func (gpt *ChatGPT) doAPIRequestWithRetry(url, method string,
 		//fmt.Println("--------------------")
 		//fmt.Println("req", req.Header)
 		//fmt.Printf("response: %v", response)
+		logger.Debug("req", req.Header)
+
+		logger.Debugf("response %v", response)
 		// read body
 		if err != nil || response.StatusCode < 200 || response.StatusCode >= 300 {
 
@@ -169,25 +178,15 @@ func (gpt *ChatGPT) sendRequestWithBodyType(link, method string,
 	bodyType requestBodyType,
 	requestBody interface{}, responseBody interface{}) error {
 	var err error
-	client := &http.Client{Timeout: 110 * time.Second}
-	if gpt.HttpProxy == "" {
-		err = gpt.doAPIRequestWithRetry(link, method, bodyType,
-			requestBody, responseBody, client, 3)
-	} else {
-		proxyUrl, err := url.Parse(gpt.HttpProxy)
-		if err != nil {
-			return err
-		}
-		transport := &http.Transport{
-			Proxy: http.ProxyURL(proxyUrl),
-		}
-		proxyClient := &http.Client{
-			Transport: transport,
-			Timeout:   110 * time.Second,
-		}
-		err = gpt.doAPIRequestWithRetry(link, method, bodyType,
-			requestBody, responseBody, proxyClient, 3)
+	proxyString := gpt.HttpProxy
+
+	client, parseProxyError := GetProxyClient(proxyString)
+	if parseProxyError != nil {
+		return parseProxyError
 	}
+
+	err = gpt.doAPIRequestWithRetry(link, method, bodyType,
+		requestBody, responseBody, client, MaxRetries)
 
 	return err
 }
@@ -211,6 +210,8 @@ func NewChatGPT(config initialization.Config) *ChatGPT {
 		ApiKey:    config.OpenaiApiKeys,
 		ApiUrl:    config.OpenaiApiUrl,
 		HttpProxy: config.HttpProxy,
+		Model:     config.OpenaiModel,
+		MaxTokens: config.OpenaiMaxTokens,
 		Platform:  platform,
 		AzureConfig: AzureConfig{
 			BaseURL:        AzureApiUrlV1,
@@ -233,4 +234,30 @@ func (gpt *ChatGPT) FullUrl(suffix string) string {
 		url = fmt.Sprintf("%s/v1/%s", gpt.ApiUrl, suffix)
 	}
 	return url
+}
+
+func GetProxyClient(proxyString string) (*http.Client, error) {
+	var client *http.Client
+	timeOutDuration := time.Duration(initialization.GetConfig().OpenAIHttpClientTimeOut) * time.Second
+	if proxyString == "" {
+		client = &http.Client{Timeout: timeOutDuration}
+	} else {
+		proxyUrl, err := url.Parse(proxyString)
+		if err != nil {
+			return nil, err
+		}
+		transport := &http.Transport{
+			Proxy: http.ProxyURL(proxyUrl),
+		}
+		client = &http.Client{
+			Transport: transport,
+			Timeout:   timeOutDuration,
+		}
+	}
+	return client, nil
+}
+
+func (gpt *ChatGPT) ChangeMode(model string) *ChatGPT {
+	gpt.Model = model
+	return gpt
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"start-feishubot/logger"
 
 	"start-feishubot/initialization"
 	"start-feishubot/services"
@@ -28,7 +29,7 @@ func (*PicAction) Execute(a *ActionInfo) bool {
 		a.handler.sessionCache.SetMode(*a.info.sessionId,
 			services.ModePicCreate)
 		a.handler.sessionCache.SetPicResolution(*a.info.sessionId,
-			services.Resolution256)
+			services.Resolution1024)
 		sendPicCreateInstructionCard(*a.ctx, a.info.sessionId,
 			a.info.msgId)
 		return false
@@ -36,7 +37,7 @@ func (*PicAction) Execute(a *ActionInfo) bool {
 
 	mode := a.handler.sessionCache.GetMode(*a.info.sessionId)
 	//fmt.Println("mode: ", mode)
-
+	logger.Debug("MODE:", mode)
 	// 收到一张图片,且不在图片创作模式下, 提醒是否切换到图片创作模式
 	if a.info.msgType == "image" && mode != services.ModePicCreate {
 		sendPicModeCheckCard(*a.ctx, a.info.sessionId, a.info.msgId)
@@ -91,8 +92,10 @@ func (*PicAction) Execute(a *ActionInfo) bool {
 	if mode == services.ModePicCreate {
 		resolution := a.handler.sessionCache.GetPicResolution(*a.
 			info.sessionId)
+		style := a.handler.sessionCache.GetPicStyle(*a.
+			info.sessionId)
 		bs64, err := a.handler.gpt.GenerateOneImage(a.info.qParsed,
-			resolution)
+			resolution, style)
 		if err != nil {
 			replyMsg(*a.ctx, fmt.Sprintf(
 				"🤖️：图片生成失败，请稍后再试～\n错误信息: %v", err), a.info.msgId)

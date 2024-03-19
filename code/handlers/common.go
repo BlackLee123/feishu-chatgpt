@@ -13,74 +13,10 @@ func msgFilter(msg string) string {
 	//replace @到下一个非空的字段 为 ''
 	regex := regexp.MustCompile(`@[^ ]*`)
 	return regex.ReplaceAllString(msg, "")
-
 }
 
 // Parse rich text json to text
 func parsePostContent(content string) string {
-	/*
-		{
-		    "title":"我是一个标题",
-		    "content":[
-		        [
-		            {
-		                "tag":"text",
-		                "text":"第一行 :",
-		                "style": ["bold", "underline"]
-		            },
-		            {
-		                "tag":"a",
-		                "href":"http://www.feishu.cn",
-		                "text":"超链接",
-		                "style": ["bold", "italic"]
-		            },
-		            {
-		                "tag":"at",
-		                "user_id":"@_user_1",
-		                "user_name":"",
-		                "style": []
-		            }
-		        ],
-		        [
-		            {
-		                "tag":"img",
-		                "image_key":"img_47354fbc-a159-40ed-86ab-2ad0f1acb42g"
-		            }
-		        ],
-		        [
-		            {
-		                "tag":"text",
-		                "text":"第二行:",
-		                "style": ["bold", "underline"]
-		            },
-		            {
-		                "tag":"text",
-		                "text":"文本测试",
-		                "style": []
-		            }
-		        ],
-		        [
-		            {
-		                "tag":"img",
-		                "image_key":"img_47354fbc-a159-40ed-86ab-2ad0f1acb42g"
-		            }
-		        ],
-		        [
-		            {
-		                "tag":"media",
-		                "file_key": "file_v2_0dcdd7d9-fib0-4432-a519-41d25aca542j",
-		                "image_key": "img_7ea74629-9191-4176-998c-2e603c9c5e8g"
-		            }
-		        ],
-		        [
-		            {
-		                "tag": "emotion",
-		                "emoji_type": "SMILE"
-		            }
-		        ]
-		    ]
-		}
-	*/
 	var contentMap map[string]interface{}
 	err := json.Unmarshal([]byte(content), &contentMap)
 
@@ -108,6 +44,33 @@ func parsePostContent(content string) string {
 		text += "\n"
 	}
 	return msgFilter(text)
+}
+
+func parsePostImageKeys(content string) []string {
+	var contentMap map[string]interface{}
+	err := json.Unmarshal([]byte(content), &contentMap)
+
+	if err != nil {
+		fmt.Println(err)
+		return nil
+	}
+
+	var imageKeys []string
+
+	if contentMap["content"] == nil {
+		return imageKeys
+	}
+
+	contentList := contentMap["content"].([]interface{})
+	for _, v := range contentList {
+		for _, v1 := range v.([]interface{}) {
+			if v1.(map[string]interface{})["tag"] == "img" {
+				imageKeys = append(imageKeys, v1.(map[string]interface{})["image_key"].(string))
+			}
+		}
+	}
+
+	return imageKeys
 }
 
 func parseContent(content, msgType string) string {

@@ -2,11 +2,13 @@ package openai
 
 import (
 	"bufio"
+	"encoding/base64"
 	"fmt"
 	"image"
 	"image/jpeg"
 	"image/png"
 	"io"
+	"io/ioutil"
 	"mime/multipart"
 	"os"
 )
@@ -16,6 +18,8 @@ type ImageGenerationRequestBody struct {
 	N              int    `json:"n"`
 	Size           string `json:"size"`
 	ResponseFormat string `json:"response_format"`
+	Model          string `json:"model,omitempty"`
+	Style          string `json:"style,omitempty"`
 }
 
 type ImageResponseBody struct {
@@ -33,12 +37,14 @@ type ImageVariantRequestBody struct {
 }
 
 func (gpt *ChatGPT) GenerateImage(prompt string, size string,
-	n int) ([]string, error) {
+	n int, style string) ([]string, error) {
 	requestBody := ImageGenerationRequestBody{
 		Prompt:         prompt,
 		N:              n,
 		Size:           size,
 		ResponseFormat: "b64_json",
+		Model:          "dall-e-3",
+		Style:          style,
 	}
 
 	imageResponseBody := &ImageResponseBody{}
@@ -57,8 +63,8 @@ func (gpt *ChatGPT) GenerateImage(prompt string, size string,
 }
 
 func (gpt *ChatGPT) GenerateOneImage(prompt string,
-	size string) (string, error) {
-	b64s, err := gpt.GenerateImage(prompt, size, 1)
+	size string, style string) (string, error) {
+	b64s, err := gpt.GenerateImage(prompt, size, 1, style)
 	if err != nil {
 		return "", err
 	}
@@ -67,7 +73,8 @@ func (gpt *ChatGPT) GenerateOneImage(prompt string,
 
 func (gpt *ChatGPT) GenerateOneImageWithDefaultSize(
 	prompt string) (string, error) {
-	return gpt.GenerateOneImage(prompt, "512x512")
+	// works for dall-e 2&3
+	return gpt.GenerateOneImage(prompt, "1024x1024", "")
 }
 
 func (gpt *ChatGPT) GenerateImageVariation(images string,
@@ -294,4 +301,23 @@ func GetImageCompressionType(path string) (string, error) {
 	fmt.Println("format: ", format)
 	// 返回压缩类型
 	return format, nil
+}
+
+func GetBase64FromImage(imagePath string) (string, error) {
+	// 打开文件
+	// 读取图片文件
+	imageFile, err := os.Open(imagePath)
+	if err != nil {
+		return "", err
+	}
+	defer imageFile.Close()
+	// 读取图片内容
+	imageData, err := ioutil.ReadAll(imageFile)
+	if err != nil {
+		return "", err
+	}
+	// 将图片内容转换为base64编码
+	base64String := base64.StdEncoding.EncodeToString(imageData)
+
+	return base64String, nil
 }
