@@ -53,7 +53,7 @@ func judgeMsgType(event *larkim.P2MessageReceiveV1) (string, error) {
 
 func (m MessageHandler) msgReceivedHandler(ctx context.Context, event *larkim.P2MessageReceiveV1) error {
 
-	m.logger.Info("[receive]", zap.String("messageid", *event.Event.Message.MessageId), zap.String("message", *event.Event.Message.Content))
+	m.logger.Info("[receive]", zap.String("messageid", *event.Event.Message.MessageId), zap.String("MessageType", *event.Event.Message.MessageType), zap.String("message", *event.Event.Message.Content))
 	// alert(ctx, fmt.Sprintf("收到消息: messageId %v", *event.Event.Message.MessageId))
 	handlerType := judgeChatType(event)
 	if handlerType == "otherChat" {
@@ -80,12 +80,14 @@ func (m MessageHandler) msgReceivedHandler(ctx context.Context, event *larkim.P2
 	if sessionId == nil || *sessionId == "" {
 		sessionId = msgId
 	}
+	qParsed := strings.Trim(parseContent(*content, msgType), " ")
+	m.logger.Info("[receive]", zap.String("messageid", *event.Event.Message.MessageId), zap.String("MessageType", *event.Event.Message.MessageType), zap.String("qParsed", qParsed))
 	msgInfo := MsgInfo{
 		handlerType: handlerType,
 		msgType:     msgType,
 		msgId:       msgId,
 		chatId:      chatId,
-		qParsed:     strings.Trim(parseContent(*content, msgType), " "),
+		qParsed:     qParsed,
 		fileKey:     parseFileKey(*content),
 		imageKey:    parseImageKey(*content),
 		imageKeys:   parsePostImageKeys(*content),

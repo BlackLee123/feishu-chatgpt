@@ -4,8 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	go_openai "github.com/sashabaranov/go-openai"
 	"io"
+
+	go_openai "github.com/sashabaranov/go-openai"
 )
 
 func (c *ChatGPT) StreamChat(ctx context.Context,
@@ -71,7 +72,7 @@ func (c *ChatGPT) StreamChatWithHistory(ctx context.Context,
 	defer stream.Close()
 	for {
 		response, err := stream.Recv()
-		fmt.Println("response: ", response)
+		// fmt.Println("response: ", response)
 		if errors.Is(err, io.EOF) {
 			//fmt.Println("Stream finished")
 			return nil

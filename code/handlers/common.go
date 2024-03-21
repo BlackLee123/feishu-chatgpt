@@ -11,7 +11,7 @@ import (
 // func sendCard
 func msgFilter(msg string) string {
 	//replace @到下一个非空的字段 为 ''
-	regex := regexp.MustCompile(`@[^ ]*`)
+	regex := regexp.MustCompile(`@_user_[^ ]*`)
 	return regex.ReplaceAllString(msg, "")
 }
 
