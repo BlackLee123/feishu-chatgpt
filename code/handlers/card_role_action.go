@@ -2,10 +2,11 @@ package handlers
 
 import (
 	"context"
-	larkcard "github.com/larksuite/oapi-sdk-go/v3/card"
 	"start-feishubot/initialization"
 	"start-feishubot/services"
-	"start-feishubot/services/openai"
+
+	larkcard "github.com/larksuite/oapi-sdk-go/v3/card"
+	openai "github.com/sashabaranov/go-openai"
 )
 
 func NewRoleTagCardHandler(cardMsg CardMsg,
@@ -62,7 +63,7 @@ func CommonProcessRole(msg CardMsg, cardAction *larkcard.CardAction,
 		return nil, error, true
 	}
 	cache.Clear(msg.SessionId)
-	systemMsg := append([]openai.Messages{}, openai.Messages{
+	systemMsg := append([]openai.ChatCompletionMessage{}, openai.ChatCompletionMessage{
 		Role: "system", Content: contentByTitle,
 	})
 	cache.SetMsg(msg.SessionId, systemMsg)

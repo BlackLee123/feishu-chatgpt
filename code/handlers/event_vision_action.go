@@ -6,20 +6,17 @@ import (
 	"os"
 	"start-feishubot/initialization"
 	"start-feishubot/services"
-	"start-feishubot/services/openai"
+	myopenai "start-feishubot/services/openai"
 	"start-feishubot/utils"
 
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
+	openai "github.com/sashabaranov/go-openai"
 )
 
 type VisionAction struct { /*图片推理*/
 }
 
 func (va *VisionAction) Execute(a *ActionInfo) bool {
-	if !AzureModeCheck(a) {
-		return true
-	}
-
 	if isVisionCommand(a) {
 		initializeVisionMode(a)
 		sendVisionInstructionCard(*a.ctx, a.info.sessionId, a.info.msgId)
@@ -101,7 +98,7 @@ func downloadAndEncodeImage(imageKey string, msgId *string) (string, error) {
 	}
 
 	resp.WriteFile(f)
-	return openai.GetBase64FromImage(f)
+	return myopenai.GetBase64FromImage(f)
 }
 
 func replyWithErrorMsg(ctx context.Context, err error, msgId *string) {
@@ -110,7 +107,7 @@ func replyWithErrorMsg(ctx context.Context, err error, msgId *string) {
 
 func (va *VisionAction) processImageAndReply(a *ActionInfo, base64 string, detail string) bool {
 	msg := createVisionMessages("解释这个图片", base64, detail)
-	completions, err := a.handler.gpt.GetVisionInfo(msg)
+	completions, err := a.handler.gpt.Completions(msg, myopenai.Balance)
 	if err != nil {
 		replyWithErrorMsg(*a.ctx, err, a.info.msgId)
 		return false
@@ -121,7 +118,7 @@ func (va *VisionAction) processImageAndReply(a *ActionInfo, base64 string, detai
 
 func (va *VisionAction) processMultipleImagesAndReply(a *ActionInfo, base64s []string, detail string) bool {
 	msg := createMultipleVisionMessages(a.info.qParsed, base64s, detail)
-	completions, err := a.handler.gpt.GetVisionInfo(msg)
+	completions, err := a.handler.gpt.Completions(msg, myopenai.Balance)
 	if err != nil {
 		replyWithErrorMsg(*a.ctx, err, a.info.msgId)
 		return false
@@ -130,31 +127,31 @@ func (va *VisionAction) processMultipleImagesAndReply(a *ActionInfo, base64s []s
 	return false
 }
 
-func createVisionMessages(query, base64Image, detail string) []openai.VisionMessages {
-	return []openai.VisionMessages{
+func createVisionMessages(query, base64Image, detail string) []openai.ChatCompletionMessage {
+	return []openai.ChatCompletionMessage{
 		{
 			Role: "user",
-			Content: []openai.ContentType{
-				{Type: "text", Text: query},
-				{Type: "image_url", ImageURL: &openai.ImageURL{
+			MultiContent: []openai.ChatMessagePart{
+				{Type: openai.ChatMessagePartTypeText, Text: query},
+				{Type: openai.ChatMessagePartTypeImageURL, ImageURL: &openai.ChatMessageImageURL{
 					URL:    "data:image/jpeg;base64," + base64Image,
-					Detail: detail,
+					Detail: openai.ImageURLDetail(detail),
 				}},
 			},
 		},
 	}
 }
 
-func createMultipleVisionMessages(query string, base64Images []string, detail string) []openai.VisionMessages {
-	content := []openai.ContentType{{Type: "text", Text: query}}
+func createMultipleVisionMessages(query string, base64Images []string, detail string) []openai.ChatCompletionMessage {
+	content := []openai.ChatMessagePart{{Type: "text", Text: query}}
 	for _, base64Image := range base64Images {
-		content = append(content, openai.ContentType{
-			Type: "image_url",
-			ImageURL: &openai.ImageURL{
+		content = append(content, openai.ChatMessagePart{
+			Type: openai.ChatMessagePartTypeImageURL,
+			ImageURL: &openai.ChatMessageImageURL{
 				URL:    "data:image/jpeg;base64," + base64Image,
-				Detail: detail,
+				Detail: openai.ImageURLDetail(detail),
 			},
 		})
 	}
-	return []openai.VisionMessages{{Role: "user", Content: content}}
+	return []openai.ChatCompletionMessage{{Role: "user", MultiContent: content}}
 }

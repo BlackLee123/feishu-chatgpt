@@ -9,13 +9,12 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/getsentry/sentry-go"
-	sentrygin "github.com/getsentry/sentry-go/gin"
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 
-	larkcard "github.com/larksuite/oapi-sdk-go/v3/card"
-
 	"github.com/gin-gonic/gin"
+	larkcard "github.com/larksuite/oapi-sdk-go/v3/card"
+	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
+	larkws "github.com/larksuite/oapi-sdk-go/v3/ws"
 	"github.com/spf13/pflag"
 
 	sdkginext "github.com/larksuite/oapi-sdk-gin"
@@ -29,18 +28,6 @@ func main() {
 	defer logger.Sync()
 	stdLog := zap.RedirectStdLog(logger)
 	defer stdLog()
-
-	// To initialize Sentry's handler, you need to initialize Sentry itself beforehand
-	if err := sentry.Init(sentry.ClientOptions{
-		Dsn:           "https://78731d69470e4f09ae1590be0ae2ec6d@o428088.ingest.sentry.io/4505040835837952",
-		EnableTracing: true,
-		// Set TracesSampleRate to 1.0 to capture 100%
-		// of transactions for performance monitoring.
-		// We recommend adjusting this value in production,
-		TracesSampleRate: 1.0,
-	}); err != nil {
-		logger.Error("Sentry initialization failed", zap.Error(err))
-	}
 
 	initialization.InitRoleList()
 	pflag.Parse()
@@ -62,21 +49,21 @@ func main() {
 
 	gin.ForceConsoleColor()
 	r := gin.Default()
-	r.Use(sentrygin.New(sentrygin.Options{}))
 	r.GET("/ping", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "pong",
 		})
 	})
-	r.GET("/test", func(c *gin.Context) {
-		panic("y tho")
-	})
-	r.POST("/webhook/event",
-		sdkginext.NewEventHandlerFunc(eventHandler))
 	r.POST("/webhook/card",
 		sdkginext.NewCardActionHandlerFunc(
 			cardHandler))
-
+	go func() {
+		larkWsClient := larkws.NewClient(config.FeishuAppId, config.FeishuAppSecret, larkws.WithEventHandler(eventHandler), larkws.WithLogLevel(larkcore.LogLevelDebug))
+		err := larkWsClient.Start(context.Background())
+		if err != nil {
+			logger.Fatal("larkws  启动失败", zap.Error(err))
+		}
+	}()
 	err := initialization.StartServer(*config, r)
 	if err != nil {
 		logger.Fatal("failed to start server", zap.Error(err))

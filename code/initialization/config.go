@@ -36,9 +36,6 @@ type Config struct {
 	AzureDeploymentName        string
 	AzureResourceName          string
 	AzureOpenaiToken           string
-	XFAppId                    string
-	XFApiSecret                string
-	XFApiKey                   string
 	StreamMode                 bool
 }
 
@@ -84,9 +81,12 @@ func LoadConfig(cfg string) *Config {
 		CertFile:                   getViperStringValue("CERT_FILE", "cert.pem"),
 		KeyFile:                    getViperStringValue("KEY_FILE", "key.pem"),
 		OpenaiApiUrl:               getViperStringValue("API_URL", "https://api.openai.com"),
-		XFAppId:                    getViperStringValue("XFAPP_ID", ""),
-		XFApiSecret:                getViperStringValue("XFAPP_SECRET", ""),
-		XFApiKey:                   getViperStringValue("XFAPP_KEY", ""),
+		HttpProxy:                  getViperStringValue("HTTP_PROXY", ""),
+		AzureOn:                    getViperBoolValue("AZURE_ON", false),
+		AzureApiVersion:            getViperStringValue("AZURE_API_VERSION", "2023-03-15-preview"),
+		AzureDeploymentName:        getViperStringValue("AZURE_DEPLOYMENT_NAME", ""),
+		AzureResourceName:          getViperStringValue("AZURE_RESOURCE_NAME", ""),
+		AzureOpenaiToken:           getViperStringValue("AZURE_OPENAI_TOKEN", ""),
 		StreamMode:                 getViperBoolValue("STREAM_MODE", false),
 	}
 

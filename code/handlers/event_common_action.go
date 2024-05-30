@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"start-feishubot/initialization"
-	"start-feishubot/services/openai"
+	myopenai "start-feishubot/services/openai"
 	"start-feishubot/utils"
+
+	openai "github.com/sashabaranov/go-openai"
 
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 	"go.uber.org/zap"
@@ -98,7 +100,7 @@ func (*RolePlayAction) Execute(a *ActionInfo) bool {
 	if system, foundSystem := utils.EitherCutPrefix(a.info.qParsed,
 		"/system ", "角色扮演 "); foundSystem {
 		a.handler.sessionCache.Clear(*a.info.sessionId)
-		systemMsg := append([]openai.Messages{}, openai.Messages{
+		systemMsg := append([]openai.ChatCompletionMessage{}, openai.ChatCompletionMessage{
 			Role: "system", Content: system,
 		})
 		a.handler.sessionCache.SetMsg(*a.info.sessionId, systemMsg)
@@ -116,23 +118,6 @@ func (*HelpAction) Execute(a *ActionInfo) bool {
 	if _, foundHelp := utils.EitherTrimEqual(a.info.qParsed, "/help",
 		"帮助"); foundHelp {
 		sendHelpCard(*a.ctx, a.info.sessionId, a.info.msgId)
-		return false
-	}
-	return true
-}
-
-type BalanceAction struct { /*余额*/
-}
-
-func (*BalanceAction) Execute(a *ActionInfo) bool {
-	if _, foundBalance := utils.EitherTrimEqual(a.info.qParsed,
-		"/balance", "余额"); foundBalance {
-		balanceResp, err := a.handler.gpt.GetBalance()
-		if err != nil {
-			replyMsg(*a.ctx, "查询余额失败，请稍后再试", a.info.msgId)
-			return false
-		}
-		sendBalanceCard(*a.ctx, a.info.sessionId, *balanceResp)
 		return false
 	}
 	return true
@@ -164,7 +149,7 @@ type AIModeAction struct { /*发散模式*/
 func (*AIModeAction) Execute(a *ActionInfo) bool {
 	if _, foundMode := utils.EitherCutPrefix(a.info.qParsed,
 		"/ai_mode", "发散模式"); foundMode {
-		SendAIModeListsCard(*a.ctx, a.info.sessionId, a.info.msgId, openai.AIModeStrs)
+		SendAIModeListsCard(*a.ctx, a.info.sessionId, a.info.msgId, myopenai.AIModeStrs)
 		return false
 	}
 	return true

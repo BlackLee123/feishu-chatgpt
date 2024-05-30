@@ -10,7 +10,7 @@ import (
 )
 
 func (c *ChatGPT) StreamChat(ctx context.Context,
-	msg []Messages, mode AIMode,
+	msg []go_openai.ChatCompletionMessage, mode AIMode,
 	responseStream chan string) error {
 	//change msg type from Messages to openai.ChatCompletionMessage
 	chatMsgs := make([]go_openai.ChatCompletionMessage, len(msg))
@@ -30,26 +30,6 @@ func (c *ChatGPT) StreamChatWithHistory(ctx context.Context,
 	responseStream chan string,
 ) error {
 
-	config := go_openai.DefaultConfig(c.ApiKey[0])
-	config.BaseURL = c.ApiUrl + "/v1"
-	if c.Platform != OpenAI {
-		baseUrl := fmt.Sprintf("https://%s.%s",
-			c.AzureConfig.ResourceName, "openai.azure.com")
-		config = go_openai.DefaultAzureConfig(c.AzureConfig.
-			ApiToken, baseUrl)
-		config.AzureModelMapperFunc = func(model string) string {
-			return c.AzureConfig.DeploymentName
-
-		}
-	}
-
-	proxyClient, parseProxyError := GetProxyClient(c.HttpProxy)
-	if parseProxyError != nil {
-		return parseProxyError
-	}
-	config.HTTPClient = proxyClient
-
-	client := go_openai.NewClientWithConfig(config)
 	//pp.Printf("client: %v", client)
 	//turn aimode to float64()
 	var temperature float32
@@ -64,7 +44,7 @@ func (c *ChatGPT) StreamChatWithHistory(ctx context.Context,
 		//Moderation:     true,
 		//ModerationStop: true,
 	}
-	stream, err := client.CreateChatCompletionStream(ctx, req)
+	stream, err := c.Client.CreateChatCompletionStream(ctx, req)
 	if err != nil {
 		fmt.Errorf("CreateCompletionStream returned error: %v", err)
 	}

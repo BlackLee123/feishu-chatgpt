@@ -16,10 +16,6 @@ type PicAction struct { /*图片*/
 }
 
 func (*PicAction) Execute(a *ActionInfo) bool {
-	check := AzureModeCheck(a)
-	if !check {
-		return true
-	}
 	// 开启图片创作模式
 	if _, foundPic := utils.EitherTrimEqual(a.info.qParsed,
 		"/picture", "图片创作"); foundPic {
@@ -75,7 +71,12 @@ func (*PicAction) Execute(a *ActionInfo) bool {
 				a.info.msgId)
 			return false
 		}
-		bs64, err := a.handler.gpt.GenerateOneImageVariation(f, resolution)
+		file, err := os.Open(f)
+		if err != nil {
+			return false
+		}
+		defer file.Close()
+		bs64, err := a.handler.gpt.GenerateOneImageVariation(file, resolution)
 		if err != nil {
 			replyMsg(*a.ctx, fmt.Sprintf(
 				"🤖️：图片生成失败，请稍后再试～\n错误信息: %v", err), a.info.msgId)

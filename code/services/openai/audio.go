@@ -2,10 +2,13 @@ package openai
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"os"
+
+	openai "github.com/sashabaranov/go-openai"
 )
 
 type AudioToTextRequestBody struct {
@@ -48,19 +51,17 @@ func audioMultipartForm(request AudioToTextRequestBody, w *multipart.Writer) err
 }
 
 func (gpt *ChatGPT) AudioToText(audio string) (string, error) {
-	requestBody := AudioToTextRequestBody{
-		File:           audio,
-		Model:          "whisper-1",
-		ResponseFormat: "text",
+	ctx := context.Background()
+
+	req := openai.AudioRequest{
+		Model:    openai.Whisper1,
+		FilePath: audio,
+		Format:   openai.AudioResponseFormatText,
 	}
-	audioToTextResponseBody := &AudioToTextResponseBody{}
-	err := gpt.sendRequestWithBodyType(gpt.ApiUrl+"/v1/audio/transcriptions",
-		"POST", formVoiceDataBody, requestBody, audioToTextResponseBody)
-	//fmt.Println(audioToTextResponseBody)
+	resp, err := gpt.Client.CreateTranscription(ctx, req)
 	if err != nil {
-		//fmt.Println(err)
+		fmt.Printf("Transcription error: %v\n", err)
 		return "", err
 	}
-
-	return audioToTextResponseBody.Text, nil
+	return resp.Text, nil
 }

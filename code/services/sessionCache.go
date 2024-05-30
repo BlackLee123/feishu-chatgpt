@@ -1,8 +1,13 @@
 package services
 
 import (
-	"start-feishubot/services/openai"
+	"strings"
 	"time"
+
+	myopenai "start-feishubot/services/openai"
+
+	"github.com/pandodao/tokenizer-go"
+	openai "github.com/sashabaranov/go-openai"
 
 	"github.com/patrickmn/go-cache"
 )
@@ -20,11 +25,11 @@ type Resolution string
 type PicStyle string
 
 type SessionMeta struct {
-	Mode         SessionMode       `json:"mode"`
-	Msg          []openai.Messages `json:"msg,omitempty"`
-	PicSetting   PicSetting        `json:"pic_setting,omitempty"`
-	AIMode       openai.AIMode     `json:"ai_mode,omitempty"`
-	VisionDetail VisionDetail      `json:"vision_detail,omitempty"`
+	Mode         SessionMode                    `json:"mode"`
+	Msg          []openai.ChatCompletionMessage `json:"msg,omitempty"`
+	PicSetting   PicSetting                     `json:"pic_setting,omitempty"`
+	AIMode       myopenai.AIMode                `json:"ai_mode,omitempty"`
+	VisionDetail VisionDetail                   `json:"vision_detail,omitempty"`
 }
 
 const (
@@ -52,12 +57,12 @@ const (
 type SessionServiceCacheInterface interface {
 	Get(sessionId string) *SessionMeta
 	Set(sessionId string, sessionMeta *SessionMeta)
-	GetMsg(sessionId string) []openai.Messages
-	SetMsg(sessionId string, msg []openai.Messages)
+	GetMsg(sessionId string) []openai.ChatCompletionMessage
+	SetMsg(sessionId string, msg []openai.ChatCompletionMessage)
 	SetMode(sessionId string, mode SessionMode)
 	GetMode(sessionId string) SessionMode
-	GetAIMode(sessionId string) openai.AIMode
-	SetAIMode(sessionId string, aiMode openai.AIMode)
+	GetAIMode(sessionId string) myopenai.AIMode
+	SetAIMode(sessionId string, aiMode myopenai.AIMode)
 	SetPicResolution(sessionId string, resolution Resolution)
 	GetPicResolution(sessionId string) string
 	SetPicStyle(sessionId string, resolution PicStyle)
@@ -108,17 +113,17 @@ func (s *SessionService) SetMode(sessionId string, mode SessionMode) {
 	s.cache.Set(sessionId, sessionMeta, maxCacheTime)
 }
 
-func (s *SessionService) GetAIMode(sessionId string) openai.AIMode {
+func (s *SessionService) GetAIMode(sessionId string) myopenai.AIMode {
 	sessionContext, ok := s.cache.Get(sessionId)
 	if !ok {
-		return openai.Balance
+		return myopenai.Balance
 	}
 	sessionMeta := sessionContext.(*SessionMeta)
 	return sessionMeta.AIMode
 }
 
 // SetAIMode set the ai mode for the session.
-func (s *SessionService) SetAIMode(sessionId string, aiMode openai.AIMode) {
+func (s *SessionService) SetAIMode(sessionId string, aiMode myopenai.AIMode) {
 	maxCacheTime := time.Hour * 12
 	sessionContext, ok := s.cache.Get(sessionId)
 	if !ok {
@@ -131,7 +136,7 @@ func (s *SessionService) SetAIMode(sessionId string, aiMode openai.AIMode) {
 	s.cache.Set(sessionId, sessionMeta, maxCacheTime)
 }
 
-func (s *SessionService) GetMsg(sessionId string) (msg []openai.Messages) {
+func (s *SessionService) GetMsg(sessionId string) (msg []openai.ChatCompletionMessage) {
 	sessionContext, ok := s.cache.Get(sessionId)
 	if !ok {
 		return nil
@@ -140,7 +145,7 @@ func (s *SessionService) GetMsg(sessionId string) (msg []openai.Messages) {
 	return sessionMeta.Msg
 }
 
-func (s *SessionService) SetMsg(sessionId string, msg []openai.Messages) {
+func (s *SessionService) SetMsg(sessionId string, msg []openai.ChatCompletionMessage) {
 	maxLength := 4096
 	maxCacheTime := time.Hour * 12
 
@@ -257,10 +262,15 @@ func GetSessionCache() SessionServiceCacheInterface {
 	return sessionServices
 }
 
-func getStrPoolTotalLength(strPool []openai.Messages) int {
+func getStrPoolTotalLength(strPool []openai.ChatCompletionMessage) int {
 	var total int
 	for _, v := range strPool {
-		total += v.CalculateTokenLength()
+		total += CalculateTokenLength(v)
 	}
 	return total
+}
+
+func CalculateTokenLength(msg openai.ChatCompletionMessage) int {
+	text := strings.TrimSpace(msg.Content)
+	return tokenizer.MustCalToken(text)
 }

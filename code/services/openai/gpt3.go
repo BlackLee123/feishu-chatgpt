@@ -1,11 +1,10 @@
 package openai
 
 import (
-	"errors"
-	"start-feishubot/logger"
-	"strings"
+	"context"
+	"fmt"
 
-	"github.com/pandodao/tokenizer-go"
+	openai "github.com/sashabaranov/go-openai"
 )
 
 type AIMode float64
@@ -52,48 +51,22 @@ type ChatGPTChoiceItem struct {
 	FinishReason string   `json:"finish_reason"`
 }
 
-// ChatGPTRequestBody 响应体
-type ChatGPTRequestBody struct {
-	Model            string     `json:"model"`
-	Messages         []Messages `json:"messages"`
-	MaxTokens        int        `json:"max_tokens"`
-	Temperature      AIMode     `json:"temperature"`
-	TopP             int        `json:"top_p"`
-	FrequencyPenalty int        `json:"frequency_penalty"`
-	PresencePenalty  int        `json:"presence_penalty"`
-}
-
-func (msg *Messages) CalculateTokenLength() int {
-	text := strings.TrimSpace(msg.Content)
-	return tokenizer.MustCalToken(text)
-}
-
-func (gpt *ChatGPT) Completions(msg []Messages, aiMode AIMode) (resp Messages,
-	err error) {
-	requestBody := ChatGPTRequestBody{
-		Model:            gpt.Model,
+func (gpt *ChatGPT) Completions(msg []openai.ChatCompletionMessage, aiMode AIMode) (openai.ChatCompletionMessage, error) {
+	resp, err := gpt.Client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
+		Model:            openai.GPT4o,
 		Messages:         msg,
 		MaxTokens:        gpt.MaxTokens,
-		Temperature:      aiMode,
+		Temperature:      float32(aiMode),
 		TopP:             1,
 		FrequencyPenalty: 0,
 		PresencePenalty:  0,
+	},
+	)
+
+	if err != nil {
+		fmt.Printf("ChatCompletion error: %v\n", err)
+		return openai.ChatCompletionMessage{}, err
 	}
-	gptResponseBody := &ChatGPTResponseBody{}
-	url := gpt.FullUrl("chat/completions")
-	//fmt.Println(url)
-	logger.Debug(url)
-	logger.Debug("request body ", requestBody)
-	if url == "" {
-		return resp, errors.New("无法获取openai请求地址")
-	}
-	err = gpt.sendRequestWithBodyType(url, "POST", jsonBody, requestBody, gptResponseBody)
-	if err == nil && len(gptResponseBody.Choices) > 0 {
-		resp = gptResponseBody.Choices[0].Message
-	} else {
-		logger.Errorf("ERROR %v", err)
-		resp = Messages{}
-		err = errors.New("openai 请求失败")
-	}
-	return resp, err
+
+	return resp.Choices[0].Message, nil
 }

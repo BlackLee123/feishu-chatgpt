@@ -6,11 +6,10 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"start-feishubot/logger"
+	"log"
 
 	"start-feishubot/initialization"
 	"start-feishubot/services"
-	"start-feishubot/services/openai"
 
 	"github.com/google/uuid"
 	larkcard "github.com/larksuite/oapi-sdk-go/v3/card"
@@ -74,7 +73,7 @@ func replyCard(ctx context.Context,
 
 	// 服务端错误处理
 	if !resp.Success() {
-		logger.Errorf("服务端错误 resp code[%v], msg [%v] requestId [%v] ", resp.Code, resp.Msg, resp.RequestId())
+		log.Printf("服务端错误 resp code[%v], msg [%v] requestId [%v] ", resp.Code, resp.Msg, resp.RequestId())
 		return errors.New(resp.Msg)
 	}
 	return nil
@@ -913,21 +912,6 @@ func sendVarImageCard(ctx context.Context, imageKey string,
 	return nil
 }
 
-func sendBalanceCard(ctx context.Context, msgId *string,
-	balance openai.BalanceResponse) {
-	newCard, _ := newSendCard(
-		withHeader("🎰️ 余额查询", larkcard.TemplateBlue),
-		withMainMd(fmt.Sprintf("总额度: %.2f$", balance.TotalGranted)),
-		withMainMd(fmt.Sprintf("已用额度: %.2f$", balance.TotalUsed)),
-		withMainMd(fmt.Sprintf("可用额度: %.2f$",
-			balance.TotalAvailable)),
-		withNote(fmt.Sprintf("有效期: %s - %s",
-			balance.EffectiveAt.Format("2006-01-02 15:04:05"),
-			balance.ExpiresAt.Format("2006-01-02 15:04:05"))),
-	)
-	replyCard(ctx, msgId, newCard)
-}
-
 func SendRoleTagsCard(ctx context.Context,
 	sessionId *string, msgId *string, roleTags []string) {
 	newCard, _ := newSendCard(
@@ -936,7 +920,7 @@ func SendRoleTagsCard(ctx context.Context,
 		withNote("提醒：选择角色所属分类，以便我们为您推荐更多相关角色。"))
 	err := replyCard(ctx, msgId, newCard)
 	if err != nil {
-		logger.Errorf("选择角色出错 %v", err)
+		log.Printf("选择角色出错 %v", err)
 	}
 }
 
