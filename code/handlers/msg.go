@@ -156,11 +156,14 @@ func withNote(note string) larkcard.MessageCardElement {
 
 // withMainMd 用于生成markdown消息体
 func withMainMd(msg string) larkcard.MessageCardElement {
-	msg, i := processMessage(msg)
-	msg = cleanTextBlock(msg)
-	if i != nil {
-		return nil
-	}
+	// fmt.Println("beforprocessMessage", msg)
+	// msg, i := processMessage(msg)
+	// fmt.Println("afterprocessMessage", msg)
+	// msg = cleanTextBlock(msg)
+	// fmt.Println("aftercleanTextBlock", msg)
+	// if i != nil {
+	// 	return nil
+	// }
 	mainElement := larkcard.NewMessageCardMarkdown().
 		Content(msg).Build()
 	return mainElement

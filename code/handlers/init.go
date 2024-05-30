@@ -30,7 +30,8 @@ func InitHandlers(gpt *openai.ChatGPT, config initialization.Config, logger *zap
 }
 
 func Handler(ctx context.Context, event *larkim.P2MessageReceiveV1) error {
-	return handlers.msgReceivedHandler(ctx, event)
+	go handlers.msgReceivedHandler(ctx, event)
+	return nil
 }
 
 func ReadHandler(ctx context.Context, event *larkim.P2MessageReadV1) error {
