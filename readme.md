@@ -11,7 +11,6 @@
     <img src='https://user-images.githubusercontent.com/50035229/228092540-bb9c74de-fccb-4d07-9797-f3fe1fb3705a.png' alt='角色列表' width='800'/>
     <img src='https://user-images.githubusercontent.com/50035229/223590817-37a56eac-ab6e-4293-862a-de0988ac50b7.png' alt='文字成图' width='800'/>
     <img src='https://user-images.githubusercontent.com/50035229/224531308-378a5bc3-2964-4e32-905f-8237dafc3f91.png' alt='图片变体' width='800'/>
-    <img src='https://user-images.githubusercontent.com/50035229/227900488-10a53176-f4e3-4b9e-bf9e-b60d958aefc8.png' alt='余额查询' width='800'/>
     <img src='https://user-images.githubusercontent.com/50035229/224531775-3f0e1e1b-a373-4774-a8f0-e120ccba6670.png' alt='帮助菜单' width='800'/>
     </p>
 
@@ -20,7 +19,7 @@
 <br>
 
 <p align='center'>
-   飞书 × openai × 科大讯飞
+   飞书 × openai 
 <br>
 <br>
     🚀 Feishu OpenAI 🚀
@@ -46,23 +45,8 @@
 
 👍 交互式反馈：即时获取机器人处理结果
 
-🎰 余额查询：即时获取token消耗情况
-
-🔙 历史回档：轻松回档历史对话，继续话题讨论 🚧
-
-🔒 管理员模式：内置管理员模式，使用更安全可靠 🚧
-
-🌐 多token负载均衡：优化生产级别的高频调用场景
-
 ↩️ 支持反向代理：为不同地区的用户提供更快、更稳定的访问体验
 
-📚 与飞书文档互动：成为企业员工的超级助手 🚧
-
-🎥 话题内容秒转PPT：让你的汇报从此变得更加简单 🚧
-
-📊 表格分析：轻松导入飞书表格，提升数据分析效率 🚧
-
-🍊 私有数据训练：利用公司产品信息对GPT二次训练，更好地满足客户个性化需求 🚧
 
 ## 🌟 项目特点
 
@@ -109,7 +93,6 @@ blacklee123/feishu-chatgpt:latest
 
 ---
 
-事件回调地址: http://IP:9000/webhook/event
 卡片回调地址: http://IP:9000/webhook/card
 
 把它填入飞书后台
@@ -143,26 +126,19 @@ blacklee123/feishu-chatgpt:latest
 - 创建 [飞书](https://open.feishu.cn/) 机器人
     1. 前往[开发者平台](https://open.feishu.cn/app?lang=zh-CN)创建应用,并获取到 APPID 和 Secret
     2. 前往`应用功能-机器人`, 创建机器人
-    3. 从 cpolar、serverless 或 Railway 获得公网地址，在飞书机器人后台的 `事件订阅` 板块填写。例如，
-        - `http://xxxx.r6.cpolar.top`为 cpolar 暴露的公网地址
-        - `/webhook/event`为统一的应用路由
-        - 最终的回调地址为 `http://xxxx.r6.cpolar.top/webhook/event`
-    4. 在飞书机器人后台的 `机器人` 板块，填写消息卡片请求网址。例如，
+    3. 在飞书机器人后台的 `机器人` 板块，填写消息卡片请求网址。例如，
         - `http://xxxx.r6.cpolar.top`为 cpolar 暴露的公网地址
         - `/webhook/card`为统一的应用路由
         - 最终的消息卡片请求网址为 `http://xxxx.r6.cpolar.top/webhook/card`
-    5. 在事件订阅板块，搜索三个词`机器人进群`、 `接收消息`、 `消息已读`, 把他们后面所有的权限全部勾选。
+    5. 在事件订阅板块，搜索 `接收消息`, 把他们后面所有的权限全部勾选。
        进入权限管理界面，搜索`图片`, 勾选`获取与上传图片或文件资源`。
        最终会添加下列回调事件
         - im:resource(获取与上传图片或文件资源)
         - im:message
-        - im:message.group_at_msg(获取群组中所有消息)
         - im:message.group_at_msg:readonly(接收群聊中@机器人消息事件)
         - im:message.p2p_msg(获取用户发给机器人的单聊消息)
         - im:message.p2p_msg:readonly(读取用户发给机器人的单聊消息)
         - im:message:send_as_bot(获取用户在群组中@机器人的消息)
-        - im:chat:readonly(获取群组信息)
-        - im:chat(获取与更新群组信息)
     6. 发布版本，等待企业管理员审核通过
 
 ## 加入答疑群

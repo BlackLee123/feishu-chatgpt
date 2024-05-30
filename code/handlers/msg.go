@@ -963,8 +963,7 @@ func sendOnProcessCard(ctx context.Context,
 	return id, nil
 }
 
-func updateTextCard(ctx context.Context, msg string,
-	msgId *string, ifNewTopic bool) error {
+func UpdateTextCard(ctx context.Context, msg string, msgId *string, ifNewTopic bool) error {
 	var newCard string
 	if ifNewTopic {
 		newCard, _ = newSendCard(

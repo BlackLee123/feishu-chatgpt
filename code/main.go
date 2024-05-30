@@ -9,8 +9,6 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
-
 	"github.com/gin-gonic/gin"
 	larkcard "github.com/larksuite/oapi-sdk-go/v3/card"
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
@@ -34,18 +32,16 @@ func main() {
 	config := initialization.GetConfig()
 	initialization.LoadLarkClient(*config)
 	gpt := openai.NewChatGPT(*config)
-	handlers.InitHandlers(gpt, *config, logger)
+	handler := handlers.NewMessageHandler(gpt, *config, logger)
 
 	eventHandler := dispatcher.NewEventDispatcher(
 		config.FeishuAppVerificationToken, config.FeishuAppEncryptKey).
-		OnP2MessageReceiveV1(handlers.Handler).
-		OnP2MessageReadV1(func(ctx context.Context, event *larkim.P2MessageReadV1) error {
-			return handlers.ReadHandler(ctx, event)
-		})
+		OnP2MessageReceiveV1(handler.MsgReceivedHandler)
 
 	cardHandler := larkcard.NewCardActionHandler(
-		config.FeishuAppVerificationToken, config.FeishuAppEncryptKey,
-		handlers.CardHandler())
+		config.FeishuAppVerificationToken,
+		config.FeishuAppEncryptKey,
+		handler.CardHandler)
 
 	gin.ForceConsoleColor()
 	r := gin.Default()

@@ -12,14 +12,10 @@ import (
 )
 
 type Config struct {
-	// 表示配置是否已经被初始化了。
-	Initialized                bool
-	FeishuBaseUrl              string
 	FeishuAppId                string
 	FeishuAppSecret            string
 	FeishuAppEncryptKey        string
 	FeishuAppVerificationToken string
-	FeishuBotName              string
 	OpenaiApiKeys              []string
 	OpenaiModel                string
 	OpenAIHttpClientTimeOut    int
@@ -48,7 +44,6 @@ var (
 func GetConfig() *Config {
 	once.Do(func() {
 		config = LoadConfig(*cfg)
-		config.Initialized = true
 	})
 
 	return config
@@ -65,12 +60,10 @@ func LoadConfig(cfg string) *Config {
 	//fmt.Println(string(content))
 
 	config := &Config{
-		FeishuBaseUrl:              getViperStringValue("BASE_URL", "https://open.feishu.cn"),
 		FeishuAppId:                getViperStringValue("APP_ID", ""),
 		FeishuAppSecret:            getViperStringValue("APP_SECRET", ""),
 		FeishuAppEncryptKey:        getViperStringValue("APP_ENCRYPT_KEY", ""),
 		FeishuAppVerificationToken: getViperStringValue("APP_VERIFICATION_TOKEN", ""),
-		FeishuBotName:              getViperStringValue("BOT_NAME", ""),
 		OpenaiApiKeys:              getViperStringArray("OPENAI_KEY", []string{""}),
 		OpenaiModel:                getViperStringValue("OPENAI_MODEL", "gpt-4"),
 		OpenAIHttpClientTimeOut:    getViperIntValue("OPENAI_HTTP_CLIENT_TIMEOUT", 550),
