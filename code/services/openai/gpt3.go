@@ -2,7 +2,10 @@ package openai
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
+	"log"
 
 	openai "github.com/sashabaranov/go-openai"
 )
@@ -51,12 +54,11 @@ type ChatGPTChoiceItem struct {
 	FinishReason string   `json:"finish_reason"`
 }
 
-func (gpt *ChatGPT) Completions(msg []openai.ChatCompletionMessage, aiMode AIMode) (openai.ChatCompletionMessage, error) {
+func (gpt *ChatGPT) Completions(ctx context.Context, msg []openai.ChatCompletionMessage) (openai.ChatCompletionMessage, error) {
 	resp, err := gpt.Client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
 		Model:            openai.GPT4o,
 		Messages:         msg,
 		MaxTokens:        gpt.MaxTokens,
-		Temperature:      float32(aiMode),
 		TopP:             1,
 		FrequencyPenalty: 0,
 		PresencePenalty:  0,
@@ -69,4 +71,36 @@ func (gpt *ChatGPT) Completions(msg []openai.ChatCompletionMessage, aiMode AIMod
 	}
 
 	return resp.Choices[0].Message, nil
+}
+
+func (c *ChatGPT) StreamChat(ctx context.Context, msgs []openai.ChatCompletionMessage, responseStream chan<- string) error {
+	req := openai.ChatCompletionRequest{
+		Model:     openai.GPT4o,
+		Messages:  msgs,
+		MaxTokens: 2000,
+		Stream:    true,
+	}
+	stream, err := c.Client.CreateChatCompletionStream(ctx, req)
+	if err != nil {
+		fmt.Printf("ChatCompletionStream error: %v\n", err)
+		return err
+	}
+
+	defer stream.Close()
+	defer close(responseStream)
+	for {
+		response, err := stream.Recv()
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		if err != nil {
+			fmt.Printf("Stream error: %v\n", err)
+			return err
+		}
+		if len(response.Choices) > 0 {
+			responseStream <- response.Choices[0].Delta.Content
+			log.Println("response:", response.Choices[0].Delta.Content)
+		}
+
+	}
 }

@@ -65,3 +65,31 @@ func (gpt *ChatGPT) AudioToText(audio string) (string, error) {
 	}
 	return resp.Text, nil
 }
+
+func (gpt *ChatGPT) TextToSpeech(text string, fileKey string) error {
+	ctx := context.Background()
+
+	req := openai.CreateSpeechRequest{
+		Model:          openai.TTSModel1,
+		Input:          text,
+		ResponseFormat: openai.SpeechResponseFormatOpus,
+		Voice:          openai.VoiceNova,
+	}
+	res, err := gpt.Client.CreateSpeech(ctx, req)
+	if err != nil {
+		return err
+	}
+	defer res.Close()
+
+	buf, err := io.ReadAll(res)
+	if err != nil {
+		return err
+	}
+
+	// save buf to file as mp3
+	err = os.WriteFile(fileKey, buf, 0644)
+	if err != nil {
+		return err
+	}
+	return err
+}

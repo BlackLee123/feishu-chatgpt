@@ -32,9 +32,11 @@ func NewChatGPT(config initialization.Config) *ChatGPT {
 		azureConfig.AzureModelMapperFunc = func(model string) string {
 			azureModelMapping := map[string]string{
 				config.OpenaiModel: config.AzureDeploymentName,
+				"dall-e-3":         "pandada-dall-e-3",
 			}
 			return azureModelMapping[model]
 		}
+		azureConfig.APIVersion = "2024-02-01"
 		client = openai.NewClientWithConfig(azureConfig)
 
 	} else {

@@ -11,12 +11,9 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"github.com/gin-gonic/gin"
-	larkcard "github.com/larksuite/oapi-sdk-go/v3/card"
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
 	larkws "github.com/larksuite/oapi-sdk-go/v3/ws"
 	"github.com/spf13/pflag"
-
-	sdkginext "github.com/larksuite/oapi-sdk-gin"
 
 	"github.com/larksuite/oapi-sdk-go/v3/event/dispatcher"
 )
@@ -39,11 +36,6 @@ func main() {
 		config.FeishuAppVerificationToken, config.FeishuAppEncryptKey).
 		OnP2MessageReceiveV1(handler.MsgReceivedHandler)
 
-	cardHandler := larkcard.NewCardActionHandler(
-		config.FeishuAppVerificationToken,
-		config.FeishuAppEncryptKey,
-		handler.CardHandler)
-
 	gin.ForceConsoleColor()
 	r := gin.Default()
 	r.GET("/ping", func(c *gin.Context) {
@@ -51,9 +43,6 @@ func main() {
 			"message": "pong",
 		})
 	})
-	r.POST("/webhook/card",
-		sdkginext.NewCardActionHandlerFunc(
-			cardHandler))
 	go func() {
 		larkWsClient := larkws.NewClient(config.FeishuAppId, config.FeishuAppSecret, larkws.WithEventHandler(eventHandler), larkws.WithLogLevel(larkcore.LogLevelDebug))
 		err := larkWsClient.Start(context.Background())

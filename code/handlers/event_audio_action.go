@@ -21,16 +21,13 @@ func (*AudioAction) Execute(a *ActionInfo) bool {
 	}
 
 	fileKey := a.info.fileKey
-	//fmt.Printf("fileKey: %s \n", fileKey)
 	msgId := a.info.msgId
-	//fmt.Println("msgId: ", *msgId)
-	req := larkim.NewGetMessageResourceReqBuilder().MessageId(
-		*msgId).FileKey(fileKey).Type("file").Build()
+	req := larkim.NewGetMessageResourceReqBuilder().MessageId(*msgId).FileKey(fileKey).Type("file").Build()
 	resp, err := initialization.GetLarkClient().Im.MessageResource.Get(context.Background(), req)
 	//fmt.Println(resp, err)
 	if err != nil {
 		fmt.Println(err)
-		return true
+		return false
 	}
 	f := fmt.Sprintf("%s.ogg", fileKey)
 	resp.WriteFile(f)

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/blacklee123/feishu-openai/initialization"
 	"github.com/blacklee123/feishu-openai/services"
@@ -151,6 +152,14 @@ func withNote(note string) larkcard.MessageCardElement {
 			Build()}).
 		Build()
 	return noteElement
+}
+
+func withImg(fileKey string, alt string) larkcard.MessageCardElement {
+	mainElement := larkcard.NewMessageCardEmbedImage().
+		ImgKey(fileKey).
+		Alt(larkcard.NewMessageCardPlainText().Content(alt).Build()).
+		Build()
+	return mainElement
 }
 
 // withMainMd 用于生成markdown消息体
@@ -597,6 +606,31 @@ func uploadImage(base64Str string) (*string, error) {
 	}
 	return resp.Data.ImageKey, nil
 }
+
+func uploadOpus(f *os.File, fileName string) (string, error) {
+	audioReq := larkim.NewCreateFileReqBuilder().
+		Body(larkim.NewCreateFileReqBodyBuilder().
+			FileType("opus").
+			FileName(fileName).
+			File(f).
+			Build()).
+		Build()
+	client := initialization.GetLarkClient()
+	resp, err := client.Im.File.Create(context.Background(), audioReq)
+	// 处理错误
+	if err != nil {
+		fmt.Println(err)
+		return "", err
+	}
+
+	// 服务端错误处理
+	if !resp.Success() {
+		fmt.Println(resp.Code, resp.Msg, resp.RequestId())
+		return "", errors.New(resp.Msg)
+	}
+	return *resp.Data.FileKey, nil
+}
+
 func replyImage(ctx context.Context, ImageKey *string,
 	msgId *string) error {
 	//fmt.Println("sendMsg", ImageKey, msgId)
@@ -632,8 +666,26 @@ func replyImage(ctx context.Context, ImageKey *string,
 	return nil
 }
 
-func replayImageCardByBase64(ctx context.Context, base64Str string,
-	msgId *string, sessionId *string, question string) error {
+func UpdateImageCard(ctx context.Context, base64Str string, msgId *string, sessionId *string, question string) error {
+	imageKey, err := uploadImage(base64Str)
+	if err != nil {
+		return err
+	}
+	var newCard string
+
+	newCard, _ = newSendCard(
+		withHeader(" ", larkcard.TemplateBlue),
+		withImg(*imageKey, question),
+		withNote("已完成，您可以继续提问或者选择其他功能。"))
+
+	err = PatchCard(ctx, msgId, newCard)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func replayImageCardByBase64(ctx context.Context, base64Str string, msgId *string, sessionId *string, question string) error {
 	imageKey, err := uploadImage(base64Str)
 	if err != nil {
 		return err
@@ -753,59 +805,12 @@ func alert(ctx context.Context, msg string) error {
 	return nil
 }
 
-func sendClearCacheCheckCard(ctx context.Context,
-	sessionId *string, msgId *string) {
-	newCard, _ := newSendCard(
-		withHeader("🆑 机器人提醒", larkcard.TemplateBlue),
-		withMainMd("您确定要清除对话上下文吗？"),
-		withNote("请注意，这将开始一个全新的对话，您将无法利用之前话题的历史信息"),
-		withClearDoubleCheckBtn(sessionId))
-	replyCard(ctx, msgId, newCard)
-}
-
 func sendSystemInstructionCard(ctx context.Context,
 	sessionId *string, msgId *string, content string) {
 	newCard, _ := newSendCard(
 		withHeader("🥷  已进入角色扮演模式", larkcard.TemplateIndigo),
 		withMainText(content),
 		withNote("请注意，这将开始一个全新的对话，您将无法利用之前话题的历史信息"))
-	replyCard(ctx, msgId, newCard)
-}
-
-func sendPicCreateInstructionCard(ctx context.Context,
-	sessionId *string, msgId *string) {
-	newCard, _ := newSendCard(
-		withHeader("🖼️ 已进入图片创作模式", larkcard.TemplateBlue),
-		withPicResolutionBtn(sessionId),
-		withNote("提醒：回复文本或图片，让AI生成相关的图片。"))
-	replyCard(ctx, msgId, newCard)
-}
-
-func sendVisionInstructionCard(ctx context.Context,
-	sessionId *string, msgId *string) {
-	newCard, _ := newSendCard(
-		withHeader("🕵️️ 已进入图片推理模式", larkcard.TemplateBlue),
-		withVisionDetailLevelBtn(sessionId),
-		withNote("提醒：回复图片，让LLM和你一起推理图片的内容。"))
-	replyCard(ctx, msgId, newCard)
-}
-
-func sendPicModeCheckCard(ctx context.Context,
-	sessionId *string, msgId *string) {
-	newCard, _ := newSendCard(
-		withHeader("🖼️ 机器人提醒", larkcard.TemplateBlue),
-		withMainMd("收到图片，是否进入图片创作模式？"),
-		withNote("请注意，这将开始一个全新的对话，您将无法利用之前话题的历史信息"),
-		withPicModeDoubleCheckBtn(sessionId))
-	replyCard(ctx, msgId, newCard)
-}
-func sendVisionModeCheckCard(ctx context.Context,
-	sessionId *string, msgId *string) {
-	newCard, _ := newSendCard(
-		withHeader("🕵️ 机器人提醒", larkcard.TemplateBlue),
-		withMainMd("检测到图片，是否进入图片推理模式？"),
-		withNote("请注意，这将开始一个全新的对话，您将无法利用之前话题的历史信息"),
-		withVisionModeDoubleCheckBtn(sessionId))
 	replyCard(ctx, msgId, newCard)
 }
 
@@ -827,51 +832,13 @@ func sendOldTopicCard(ctx context.Context,
 	replyCard(ctx, msgId, newCard)
 }
 
-func sendVisionTopicCard(ctx context.Context,
-	sessionId *string, msgId *string, content string) {
-	newCard, _ := newSendCard(
-		withHeader("🕵️图片推理结果", larkcard.TemplateBlue),
-		withMainText(content),
-		withNote("让LLM和你一起推理图片的内容~"))
-	replyCard(ctx, msgId, newCard)
-}
-
 func sendHelpCard(ctx context.Context,
 	sessionId *string, msgId *string) {
 	newCard, _ := newSendCard(
-		withHeader("🎒需要帮助吗？", larkcard.TemplateBlue),
-		// withMainMd("**🤠你好呀~ 我来自企联AI，一款基于OpenAI的智能助手！**"),
-		// withSplitLine(),
-		// withMdAndExtraBtn(
-		// 	"** 🆑 清除话题上下文**\n文本回复 *清除* 或 */clear*",
-		// 	newBtn("立刻清除", map[string]interface{}{
-		// 		"value":     "1",
-		// 		"kind":      ClearCardKind,
-		// 		"chatType":  UserChatType,
-		// 		"sessionId": *sessionId,
-		// 	}, larkcard.MessageCardButtonTypeDanger)),
+		withHeader("需要帮助吗？", larkcard.TemplateBlue),
+		withMainMd("/pic + *prompt* 生成图片"),
 		withSplitLine(),
-		withMainMd("🤖 **发散模式选择** \n"+" 文本回复 *发散模式* 或 */ai_mode*"),
-		// withSplitLine(),
-		// withMainMd("🛖 **内置角色列表** \n"+" 文本回复 *角色列表* 或 */roles*"),
-		// withSplitLine(),
-		// withMainMd("🥷 **角色扮演模式**\n文本回复*角色扮演* 或 */system*+空格+角色信息"),
-		// withSplitLine(),
-		// withMainMd("🎤 **AI语音对话**\n私聊模式下直接发送语音"),
-		withSplitLine(),
-		withMainMd("🎨 **图片创作模式**\n回复*图片创作* 或 */picture*"),
-		withSplitLine(),
-		withMainMd("🕵️ **图片推理模式** \n"+" 文本回复 *图片推理* 或 */vision*"),
-		// withSplitLine(),
-		// withMainMd("🎰 **Token余额查询**\n回复*余额* 或 */balance*"),
-		// withSplitLine(),
-		// withMainMd("🔃️ **历史话题回档** 🚧\n"+" 进入话题的回复详情页,文本回复 *恢复* 或 */reload*"),
-		// withSplitLine(),
-		// withMainMd("📤 **话题内容导出** 🚧\n"+" 文本回复 *导出* 或 */export*"),
-		// withSplitLine(),
-		// withMainMd("🎰 **连续对话与多话题模式**\n"+" 点击对话框参与回复，可保持话题连贯。同时，单独提问即可开启全新新话题"),
-		withSplitLine(),
-		withMainMd("*🎒 **需要更多帮助**\n文本回复 *帮助* 或 */help\n私聊模式下直接发送语音，点击对话框参与回复，可保持话题连贯。同时，单独提问即可开启全新新话题"),
+		withMainMd("直接输入文字和文字+图片聊天"),
 	)
 	replyCard(ctx, msgId, newCard)
 }
@@ -880,15 +847,6 @@ func sendImageCard(ctx context.Context, imageKey string,
 	msgId *string, sessionId *string, question string) error {
 	newCard, _ := newSimpleSendCard(
 		withImageDiv(imageKey),
-		withSplitLine(),
-		//再来一张
-		withOneBtn(newBtn("再来一张", map[string]interface{}{
-			"value":     question,
-			"kind":      PicTextMoreKind,
-			"chatType":  UserChatType,
-			"msgId":     *msgId,
-			"sessionId": *sessionId,
-		}, larkcard.MessageCardButtonTypePrimary)),
 	)
 	replyCard(ctx, msgId, newCard)
 	return nil

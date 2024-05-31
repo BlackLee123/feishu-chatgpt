@@ -39,15 +39,15 @@ type ImageVariantRequestBody struct {
 	ResponseFormat string `json:"response_format"`
 }
 
-func (gpt *ChatGPT) GenerateImage(prompt string, size string, n int, style string) ([]string, error) {
+func (gpt *ChatGPT) GenerateImage(prompt string) ([]string, error) {
 	ctx := context.Background()
 	reqUrl := openai.ImageRequest{
 		Prompt:         prompt,
-		Size:           openai.CreateImageSize256x256,
+		Size:           openai.CreateImageSize1024x1024,
 		ResponseFormat: openai.CreateImageResponseFormatB64JSON,
 		N:              1,
 		Model:          openai.CreateImageModelDallE3,
-		Style:          openai.CreateImageStyleVivid,
+		Style:          openai.CreateImageStyleNatural,
 	}
 	respUrl, err := gpt.Client.CreateImage(ctx, reqUrl)
 	if err != nil {
@@ -63,43 +63,8 @@ func (gpt *ChatGPT) GenerateImage(prompt string, size string, n int, style strin
 	return b64Pool, nil
 }
 
-func (gpt *ChatGPT) GenerateOneImage(prompt string,
-	size string, style string) (string, error) {
-	b64s, err := gpt.GenerateImage(prompt, size, 1, style)
-	if err != nil {
-		return "", err
-	}
-	return b64s[0], nil
-}
-
-func (gpt *ChatGPT) GenerateOneImageWithDefaultSize(
-	prompt string) (string, error) {
-	// works for dall-e 2&3
-	return gpt.GenerateOneImage(prompt, "1024x1024", "")
-}
-
-func (gpt *ChatGPT) GenerateImageVariation(image *os.File, size string, n int) ([]string, error) {
-
-	respBase64, err := gpt.Client.CreateVariImage(context.Background(), openai.ImageVariRequest{
-		Image:          image,
-		N:              n,
-		Size:           size,
-		ResponseFormat: "b64_json",
-	})
-	if err != nil {
-		fmt.Printf("Image creation error: %v\n", err)
-		return nil, err
-	}
-
-	var b64Pool []string
-	for _, data := range respBase64.Data {
-		b64Pool = append(b64Pool, data.B64JSON)
-	}
-	return b64Pool, nil
-}
-
-func (gpt *ChatGPT) GenerateOneImageVariation(image *os.File, size string) (string, error) {
-	b64s, err := gpt.GenerateImageVariation(image, size, 1)
+func (gpt *ChatGPT) GenerateOneImage(prompt string) (string, error) {
+	b64s, err := gpt.GenerateImage(prompt)
 	if err != nil {
 		return "", err
 	}
