@@ -28,9 +28,8 @@ type Config struct {
 	OpenaiApiUrl               string
 	HttpProxy                  string
 	AzureOn                    bool
-	AzureApiVersion            string
 	AzureDeploymentName        string
-	AzureResourceName          string
+	AzureEndpoint              string
 	AzureOpenaiToken           string
 	StreamMode                 bool
 }
@@ -65,7 +64,7 @@ func LoadConfig(cfg string) *Config {
 		FeishuAppEncryptKey:        getViperStringValue("APP_ENCRYPT_KEY", ""),
 		FeishuAppVerificationToken: getViperStringValue("APP_VERIFICATION_TOKEN", ""),
 		OpenaiApiKeys:              getViperStringArray("OPENAI_KEY", []string{""}),
-		OpenaiModel:                getViperStringValue("OPENAI_MODEL", "gpt-4"),
+		OpenaiModel:                getViperStringValue("OPENAI_MODEL", "gpt-4o"),
 		OpenAIHttpClientTimeOut:    getViperIntValue("OPENAI_HTTP_CLIENT_TIMEOUT", 550),
 		OpenaiMaxTokens:            getViperIntValue("OPENAI_MAX_TOKENS", 2000),
 		HttpPort:                   getViperIntValue("HTTP_PORT", 9000),
@@ -76,11 +75,10 @@ func LoadConfig(cfg string) *Config {
 		OpenaiApiUrl:               getViperStringValue("API_URL", "https://api.openai.com"),
 		HttpProxy:                  getViperStringValue("HTTP_PROXY", ""),
 		AzureOn:                    getViperBoolValue("AZURE_ON", false),
-		AzureApiVersion:            getViperStringValue("AZURE_API_VERSION", "2023-03-15-preview"),
 		AzureDeploymentName:        getViperStringValue("AZURE_DEPLOYMENT_NAME", ""),
-		AzureResourceName:          getViperStringValue("AZURE_RESOURCE_NAME", ""),
+		AzureEndpoint:              getViperStringValue("AZURE_ENDPOINT", ""),
 		AzureOpenaiToken:           getViperStringValue("AZURE_OPENAI_TOKEN", ""),
-		StreamMode:                 getViperBoolValue("STREAM_MODE", false),
+		StreamMode:                 getViperBoolValue("STREAM_MODE", true),
 	}
 
 	return config

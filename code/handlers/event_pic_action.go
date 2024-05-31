@@ -4,10 +4,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"start-feishubot/initialization"
-	"start-feishubot/services"
-	"start-feishubot/services/openai"
-	"start-feishubot/utils"
+
+	"github.com/blacklee123/feishu-openai/initialization"
+	"github.com/blacklee123/feishu-openai/services"
+	"github.com/blacklee123/feishu-openai/services/openai"
+	"github.com/blacklee123/feishu-openai/utils"
 
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 )

@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"strings"
 
-	"start-feishubot/initialization"
-	"start-feishubot/services"
-	"start-feishubot/services/openai"
+	"github.com/blacklee123/feishu-openai/initialization"
+	"github.com/blacklee123/feishu-openai/services"
+	"github.com/blacklee123/feishu-openai/services/openai"
 
 	larkcard "github.com/larksuite/oapi-sdk-go/v3/card"
 	"go.uber.org/zap"

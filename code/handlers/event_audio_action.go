@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"start-feishubot/initialization"
-	"start-feishubot/utils/audio"
+
+	"github.com/blacklee123/feishu-openai/initialization"
+	"github.com/blacklee123/feishu-openai/utils/audio"
 
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 )

@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
-	"start-feishubot/handlers"
-	"start-feishubot/initialization"
-	"start-feishubot/services/openai"
+
+	"github.com/blacklee123/feishu-openai/handlers"
+	"github.com/blacklee123/feishu-openai/initialization"
+	"github.com/blacklee123/feishu-openai/services/openai"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

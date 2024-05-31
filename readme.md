@@ -51,7 +51,7 @@
 ## 🌟 项目特点
 
 - 🍏 对话基于 OpenAI(https://platform.openai.com/account/api-keys) 接口
-- 🍎 通过 lark，将 ChatGPT 接入[飞书](https://open.feishu.cn/app)和[飞书国际版](https://www.larksuite.com/)
+- 🍎 通过 lark，将 ChatGPT 接入[飞书](https://open.feishu.cn/app)
 - 🥒[Docker](https://www.docker.com/)部署
 - 🍋 基于[goCache](https://github.com/patrickmn/go-cache)内存键值对缓存
 
@@ -68,25 +68,16 @@ docker run -d --name feishu-chatgpt -p 9000:9000 \
 --env APP_SECRET=xxx \
 --env APP_ENCRYPT_KEY=xxx \
 --env APP_VERIFICATION_TOKEN=xxx \
---env BOT_NAME=chatGpt \
---env OPENAI_MODEL="gpt-4" \
+--env OPENAI_MODEL="gpt-4o" \
 --env OPENAI_KEY="sk-xxx1,sk-xxx2,sk-xxx3" \
 --env API_URL="https://api.openai.com" \
 --env HTTP_PROXY="" \
 --env OPENAI_KEY="sk-xxx1,sk-xxx2,sk-xxx3" \
---env API_URL="https://api.openai.com" \
---env HTTP_PROXY="" \
---env XFAPP_ID="科大讯飞开发平台APPID;不需要语音回复可不填写" \
---env XFAPP_SECRET="科大讯飞开发平台APISecret;不需要语音回复可不填写" \
---env XFAPP_KEY="科大讯飞开发平台APIKey;不需要语音回复可不填写" \
 --env OpenaiMaxTokens="2000" \
---env STREAM_MODE="true" \
-blacklee123/feishu-chatgpt:latest
+blacklee123/feishu-openai:latest
 ```
 
 注意:
-
-- `BOT_NAME` 为飞书机器人名称，例如 `chatGpt`
 - `OPENAI_KEY` 为openai key，多个key用逗号分隔，例如 `sk-xxx1,sk-xxx2,sk-xxx3`
 - `HTTP_PROXY` 为宿主机的proxy地址，例如 `http://host.docker.internal:7890`,没有代理的话，可以不用设置
 - `API_URL` 为openai api 接口地址，例如 `https://api.openai.com`, 没有反向代理的话，可以不用设置

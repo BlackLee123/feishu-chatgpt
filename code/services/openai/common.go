@@ -1,7 +1,7 @@
 package openai
 
 import (
-	"start-feishubot/initialization"
+	"github.com/blacklee123/feishu-openai/initialization"
 
 	openai "github.com/sashabaranov/go-openai"
 )
@@ -13,22 +13,14 @@ const (
 	Azure  PlatForm = "azure"
 )
 
-type AzureConfig struct {
-	ResourceName   string
-	DeploymentName string
-	ApiVersion     string
-	ApiToken       string
-}
-
 type ChatGPT struct {
-	ApiKey      []string
-	ApiUrl      string
-	HttpProxy   string
-	Model       string
-	MaxTokens   int
-	Platform    PlatForm
-	AzureConfig AzureConfig
-	Client      *openai.Client
+	ApiKey    []string
+	ApiUrl    string
+	HttpProxy string
+	Model     string
+	MaxTokens int
+	Platform  PlatForm
+	Client    *openai.Client
 }
 
 func NewChatGPT(config initialization.Config) *ChatGPT {
@@ -36,14 +28,14 @@ func NewChatGPT(config initialization.Config) *ChatGPT {
 	platform := OpenAI
 	if config.AzureOn {
 		platform = Azure
-		config := openai.DefaultAzureConfig("1869c1c15b6a4966ac1b93d51283a374", "https://pandada-ai.openai.azure.com/")
-		config.AzureModelMapperFunc = func(model string) string {
+		azureConfig := openai.DefaultAzureConfig(config.AzureOpenaiToken, config.AzureEndpoint)
+		azureConfig.AzureModelMapperFunc = func(model string) string {
 			azureModelMapping := map[string]string{
-				"gpt-4o": "pandada-gpt4o",
+				config.OpenaiModel: config.AzureDeploymentName,
 			}
 			return azureModelMapping[model]
 		}
-		client = openai.NewClientWithConfig(config)
+		client = openai.NewClientWithConfig(azureConfig)
 
 	} else {
 		client = openai.NewClient(config.OpenaiApiKeys[0])
@@ -56,12 +48,6 @@ func NewChatGPT(config initialization.Config) *ChatGPT {
 		Model:     config.OpenaiModel,
 		MaxTokens: config.OpenaiMaxTokens,
 		Platform:  platform,
-		AzureConfig: AzureConfig{
-			ResourceName:   config.AzureResourceName,
-			DeploymentName: config.AzureDeploymentName,
-			ApiVersion:     config.AzureApiVersion,
-			ApiToken:       config.AzureOpenaiToken,
-		},
-		Client: client,
+		Client:    client,
 	}
 }

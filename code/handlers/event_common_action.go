@@ -3,9 +3,10 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"start-feishubot/initialization"
-	myopenai "start-feishubot/services/openai"
-	"start-feishubot/utils"
+
+	"github.com/blacklee123/feishu-openai/initialization"
+	myopenai "github.com/blacklee123/feishu-openai/services/openai"
+	"github.com/blacklee123/feishu-openai/utils"
 
 	openai "github.com/sashabaranov/go-openai"
 

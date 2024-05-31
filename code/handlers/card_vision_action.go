@@ -3,9 +3,10 @@ package handlers
 import (
 	"context"
 	"fmt"
+
+	"github.com/blacklee123/feishu-openai/services"
 	larkcard "github.com/larksuite/oapi-sdk-go/v3/card"
 	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
-	"start-feishubot/services"
 )
 
 func NewVisionResolutionHandler(cardMsg CardMsg,

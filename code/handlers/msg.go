@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"log"
 
-	"start-feishubot/initialization"
-	"start-feishubot/services"
+	"github.com/blacklee123/feishu-openai/initialization"
+	"github.com/blacklee123/feishu-openai/services"
 
 	"github.com/google/uuid"
 	larkcard "github.com/larksuite/oapi-sdk-go/v3/card"

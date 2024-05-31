@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	myopenai "start-feishubot/services/openai"
+	myopenai "github.com/blacklee123/feishu-openai/services/openai"
 
 	"github.com/pandodao/tokenizer-go"
 	openai "github.com/sashabaranov/go-openai"

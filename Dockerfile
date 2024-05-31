@@ -6,7 +6,7 @@ ADD /code /app
 
 RUN GOPROXY=https://goproxy.cn go mod download
 
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags '-w -s' -o -a feishu_chatgpt
+RUN CGO_ENABLED=0 go build -ldflags '-w -s' -a -o  feishu-openai
 
 FROM alpine:3.20
 RUN apk --no-cache add tzdata && cp /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo "Asia/Shanghai" >/etc/timezone
@@ -14,7 +14,7 @@ RUN apk --no-cache add tzdata && cp /usr/share/zoneinfo/Asia/Shanghai /etc/local
 WORKDIR /app
 
 # RUN apk add --no-cache bash
-COPY --from=go-builder /build/feishu_chatgpt /app
-COPY --from=go-builder /build/role_list.yaml /app
+COPY --from=go-builder /app/feishu-openai /app
+COPY code/role_list.yaml /app/role_list.yaml
 EXPOSE 9000
-ENTRYPOINT ["/app/feishu_chatgpt"]
+ENTRYPOINT ["/app/feishu-openai"]

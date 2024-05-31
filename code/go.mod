@@ -1,4 +1,4 @@
-module start-feishubot
+module github.com/blacklee123/feishu-openai
 
 go 1.22
 
