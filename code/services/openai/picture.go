@@ -39,7 +39,7 @@ type ImageVariantRequestBody struct {
 	ResponseFormat string `json:"response_format"`
 }
 
-func (gpt *ChatGPT) GenerateImage(prompt string) ([]string, error) {
+func (gpt *ChatGPT) GenerateImage(prompt string, userId string) ([]string, error) {
 	ctx := context.Background()
 	reqUrl := openai.ImageRequest{
 		Prompt:         prompt,
@@ -48,6 +48,7 @@ func (gpt *ChatGPT) GenerateImage(prompt string) ([]string, error) {
 		N:              1,
 		Model:          openai.CreateImageModelDallE3,
 		Style:          openai.CreateImageStyleNatural,
+		User:           userId,
 	}
 	respUrl, err := gpt.Client.CreateImage(ctx, reqUrl)
 	if err != nil {
@@ -63,8 +64,8 @@ func (gpt *ChatGPT) GenerateImage(prompt string) ([]string, error) {
 	return b64Pool, nil
 }
 
-func (gpt *ChatGPT) GenerateOneImage(prompt string) (string, error) {
-	b64s, err := gpt.GenerateImage(prompt)
+func (gpt *ChatGPT) GenerateOneImage(prompt string, userId string) (string, error) {
+	b64s, err := gpt.GenerateImage(prompt, userId)
 	if err != nil {
 		return "", err
 	}

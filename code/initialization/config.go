@@ -2,9 +2,7 @@ package initialization
 
 import (
 	"fmt"
-	"os"
 	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/spf13/pflag"
@@ -12,26 +10,19 @@ import (
 )
 
 type Config struct {
-	FeishuAppId                string
-	FeishuAppSecret            string
-	FeishuAppEncryptKey        string
-	FeishuAppVerificationToken string
-	OpenaiApiKeys              []string
-	OpenaiModel                string
-	OpenAIHttpClientTimeOut    int
-	OpenaiMaxTokens            int
-	HttpPort                   int
-	HttpsPort                  int
-	UseHttps                   bool
-	CertFile                   string
-	KeyFile                    string
-	OpenaiApiUrl               string
-	HttpProxy                  string
-	AzureOn                    bool
-	AzureDeploymentName        string
-	AzureEndpoint              string
-	AzureOpenaiToken           string
-	StreamMode                 bool
+	FeishuAppId             string `mapstructure:"FEISHU_APP_ID"`
+	FeishuAppSecret         string `mapstructure:"FEISHU_APP_SECRET"`
+	FeishuEncryptKey        string `mapstructure:"FEISHU_ENCRYPT_KEY"`
+	FeishuVerificationToken string `mapstructure:"FEISHU_VERIFICATION_TOKEN"`
+	OpenaiApiKey            string `mapstructure:"OPENAI_KEY"`
+	OpenaiModel             string `mapstructure:"OPENAI_MODEL"`
+	OpenaiMaxTokens         int    `mapstructure:"OPENAI_MAX_TOKENS"`
+	OpenaiApiUrl            string `mapstructure:"OPENAI_API_URL"`
+	HttpProxy               string `mapstructure:"HTTP_PROXY"`
+	AzureOn                 bool   `mapstructure:"AZURE_ON"`
+	AzureDeploymentName     string `mapstructure:"AZURE_DEPLOYMENT_NAME"`
+	AzureEndpoint           string `mapstructure:"AZURE_ENDPOINT"`
+	AzureOpenaiToken        string `mapstructure:"AZURE_OPENAI_TOKEN"`
 }
 
 var (
@@ -59,26 +50,19 @@ func LoadConfig(cfg string) *Config {
 	//fmt.Println(string(content))
 
 	config := &Config{
-		FeishuAppId:                getViperStringValue("APP_ID", ""),
-		FeishuAppSecret:            getViperStringValue("APP_SECRET", ""),
-		FeishuAppEncryptKey:        getViperStringValue("APP_ENCRYPT_KEY", ""),
-		FeishuAppVerificationToken: getViperStringValue("APP_VERIFICATION_TOKEN", ""),
-		OpenaiApiKeys:              getViperStringArray("OPENAI_KEY", []string{""}),
-		OpenaiModel:                getViperStringValue("OPENAI_MODEL", "gpt-4o"),
-		OpenAIHttpClientTimeOut:    getViperIntValue("OPENAI_HTTP_CLIENT_TIMEOUT", 550),
-		OpenaiMaxTokens:            getViperIntValue("OPENAI_MAX_TOKENS", 2000),
-		HttpPort:                   getViperIntValue("HTTP_PORT", 9000),
-		HttpsPort:                  getViperIntValue("HTTPS_PORT", 9001),
-		UseHttps:                   getViperBoolValue("USE_HTTPS", false),
-		CertFile:                   getViperStringValue("CERT_FILE", "cert.pem"),
-		KeyFile:                    getViperStringValue("KEY_FILE", "key.pem"),
-		OpenaiApiUrl:               getViperStringValue("API_URL", "https://api.openai.com"),
-		HttpProxy:                  getViperStringValue("HTTP_PROXY", ""),
-		AzureOn:                    getViperBoolValue("AZURE_ON", false),
-		AzureDeploymentName:        getViperStringValue("AZURE_DEPLOYMENT_NAME", ""),
-		AzureEndpoint:              getViperStringValue("AZURE_ENDPOINT", ""),
-		AzureOpenaiToken:           getViperStringValue("AZURE_OPENAI_TOKEN", ""),
-		StreamMode:                 getViperBoolValue("STREAM_MODE", true),
+		FeishuAppId:             getViperStringValue("APP_ID", ""),
+		FeishuAppSecret:         getViperStringValue("APP_SECRET", ""),
+		FeishuEncryptKey:        getViperStringValue("APP_ENCRYPT_KEY", ""),
+		FeishuVerificationToken: getViperStringValue("APP_VERIFICATION_TOKEN", ""),
+		OpenaiApiKey:            getViperStringValue("OPENAI_KEY", ""),
+		OpenaiModel:             getViperStringValue("OPENAI_MODEL", "gpt-4o"),
+		OpenaiMaxTokens:         getViperIntValue("OPENAI_MAX_TOKENS", 2000),
+		OpenaiApiUrl:            getViperStringValue("API_URL", "https://api.openai.com"),
+		HttpProxy:               getViperStringValue("HTTP_PROXY", ""),
+		AzureOn:                 getViperBoolValue("AZURE_ON", false),
+		AzureDeploymentName:     getViperStringValue("AZURE_DEPLOYMENT_NAME", ""),
+		AzureEndpoint:           getViperStringValue("AZURE_ENDPOINT", ""),
+		AzureOpenaiToken:        getViperStringValue("AZURE_OPENAI_TOKEN", ""),
 	}
 
 	return config
@@ -90,17 +74,6 @@ func getViperStringValue(key string, defaultValue string) string {
 		return defaultValue
 	}
 	return value
-}
-
-// OPENAI_KEY: sk-xxx,sk-xxx,sk-xxx
-// result:[sk-xxx sk-xxx sk-xxx]
-func getViperStringArray(key string, defaultValue []string) []string {
-	value := viper.GetString(key)
-	if value == "" {
-		return defaultValue
-	}
-	raw := strings.Split(value, ",")
-	return filterFormatKey(raw)
 }
 
 func getViperIntValue(key string, defaultValue int) int {
@@ -127,39 +100,4 @@ func getViperBoolValue(key string, defaultValue bool) bool {
 		return defaultValue
 	}
 	return boolValue
-}
-
-func (config *Config) GetCertFile() string {
-	if config.CertFile == "" {
-		return "cert.pem"
-	}
-	if _, err := os.Stat(config.CertFile); err != nil {
-		fmt.Printf("Certificate file %s does not exist, using default file cert.pem\n", config.CertFile)
-		return "cert.pem"
-	}
-	return config.CertFile
-}
-
-func (config *Config) GetKeyFile() string {
-	if config.KeyFile == "" {
-		return "key.pem"
-	}
-	if _, err := os.Stat(config.KeyFile); err != nil {
-		fmt.Printf("Key file %s does not exist, using default file key.pem\n", config.KeyFile)
-		return "key.pem"
-	}
-	return config.KeyFile
-}
-
-// 过滤出 "sk-" 开头的 key
-func filterFormatKey(keys []string) []string {
-	var result []string
-	for _, key := range keys {
-		if strings.HasPrefix(key, "sk-") || strings.HasPrefix(key,
-			"fk") || strings.HasPrefix(key, "fastgpt") {
-			result = append(result, key)
-		}
-	}
-	return result
-
 }

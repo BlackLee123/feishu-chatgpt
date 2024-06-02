@@ -1,14 +1,10 @@
 package handlers
 
 import (
-	"context"
 	"fmt"
 	"os"
 
-	"github.com/blacklee123/feishu-openai/initialization"
 	"github.com/blacklee123/feishu-openai/utils/audio"
-
-	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 )
 
 type AudioAction struct { /*语音*/
@@ -22,25 +18,19 @@ func (*AudioAction) Execute(a *ActionInfo) bool {
 
 	fileKey := a.info.fileKey
 	msgId := a.info.msgId
-	req := larkim.NewGetMessageResourceReqBuilder().MessageId(*msgId).FileKey(fileKey).Type("file").Build()
-	resp, err := initialization.GetLarkClient().Im.MessageResource.Get(context.Background(), req)
-	//fmt.Println(resp, err)
+
+	f, err := downloadOpus(fileKey, msgId)
 	if err != nil {
 		fmt.Println(err)
 		return false
 	}
-	f := fmt.Sprintf("%s.ogg", fileKey)
-	resp.WriteFile(f)
 	defer os.Remove(f)
 
-	//fmt.Println("f: ", f)
 	output := fmt.Sprintf("%s.mp3", fileKey)
-	// 等待转换完成
 	audio.OggToWavByPath(f, output)
 	defer os.Remove(output)
-	//fmt.Println("output: ", output)
 
-	text, err := a.handler.gpt.AudioToText(output)
+	text, err := a.handler.gpt.AudioToText(*a.ctx, output)
 	if err != nil {
 		fmt.Println(err)
 
@@ -48,8 +38,15 @@ func (*AudioAction) Execute(a *ActionInfo) bool {
 		return false
 	}
 
-	replyMsg(*a.ctx, fmt.Sprintf("🤖️：%s", text), a.info.msgId)
+	// replyMsg(*a.ctx, fmt.Sprintf("🤖️：%s", text), a.info.msgId)
 	//fmt.Println("text: ", text)
 	a.info.qParsed = text
+	if len(a.info.qParsed) == 0 {
+		sendMsg(*a.ctx, "🤖️：你想知道什么呢~", a.info.chatId)
+		fmt.Println("msgId", *a.info.msgId,
+			"message.text is empty")
+
+		return false
+	}
 	return true
 }

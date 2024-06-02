@@ -15,6 +15,5 @@ WORKDIR /app
 
 # RUN apk add --no-cache bash
 COPY --from=go-builder /app/feishu-openai /app
-COPY code/role_list.yaml /app/role_list.yaml
 EXPOSE 9000
 ENTRYPOINT ["/app/feishu-openai"]

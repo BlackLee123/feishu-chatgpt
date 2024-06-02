@@ -3,7 +3,6 @@ package handlers
 import (
 	"context"
 	"fmt"
-	"log"
 	"os"
 	"time"
 
@@ -19,14 +18,22 @@ type MessageAction struct { /*消息*/
 
 func (*MessageAction) Execute(a *ActionInfo) bool {
 	msg := a.handler.sessionCache.GetMsg(*a.info.sessionId)
-	//if new topic
-	var ifNewTopic bool
-	if len(msg) <= 1 {
-		ifNewTopic = true
-	} else {
-		ifNewTopic = false
+	if a.info.newTopic {
+		userName := ""
+		user, err := retrieveUserInfo(*a.ctx, *a.info.userId)
+		if err != nil {
+			userName = *a.info.userId
+		} else {
+			userName = *user.Name
+		}
+		msg = append(msg, openai.ChatCompletionMessage{
+			Role: openai.ChatMessageRoleSystem,
+			Content: fmt.Sprintf(`你是ChatGPT-4, 一个被OpenAI训练出来的大语言模型。
+			我的名字是%s, 请使用这个名字和我交流。`, userName),
+			Name: "ChatGPT-4",
+		})
 	}
-	if a.info.msgType == "post" && a.info.imageKeys != nil && len(a.info.imageKeys) > 0 {
+	if (a.info.msgType == "post" && a.info.imageKeys != nil && len(a.info.imageKeys) > 0) || a.info.msgType == "image" {
 		var base64s []string
 		for _, imageKey := range a.info.imageKeys {
 			if imageKey == "" {
@@ -39,19 +46,24 @@ func (*MessageAction) Execute(a *ActionInfo) bool {
 			}
 			base64s = append(base64s, base64)
 		}
-		msg = append(msg, createMultipleVisionMessages(a.info.qParsed, base64s))
+		msg = append(msg, createMultipleVisionMessages(a.info.qParsed, base64s, *a.info.userId))
 
 	} else {
 		msg = append(msg, openai.ChatCompletionMessage{
-			Role: openai.ChatMessageRoleUser, Content: a.info.qParsed,
+			Role:    openai.ChatMessageRoleUser,
+			Content: a.info.qParsed,
+			Name:    *a.info.userId,
 		})
 	}
 	answer := ""
+	if a.info.msgType == "audio" {
+		answer = "🧑‍💻：" + a.info.qParsed + "\n" + "🤖: "
+	}
 	chatResponseStream := make(chan string)
 	go func() {
 		if err := a.handler.gpt.StreamChat(*a.ctx, msg, chatResponseStream); err != nil {
 			fmt.Printf("StreamChat error: %v\n", err)
-			err := updateFinalCard(*a.ctx, "聊天失败", a.info.cardId, ifNewTopic)
+			err := updateFinalCard(*a.ctx, "聊天失败", a.info.cardId, a.info.newTopic)
 			if err != nil {
 				fmt.Printf("updateFinalCard error: %v\n", err)
 				return
@@ -62,9 +74,9 @@ func (*MessageAction) Execute(a *ActionInfo) bool {
 	for {
 		select {
 		case <-timer.C:
-			log.Println("answer:", answer)
+			a.logger.Debug("answer", zap.String("answer", answer))
 			if answer != "" {
-				err := UpdateTextCard(*a.ctx, answer, a.info.cardId, ifNewTopic)
+				err := UpdateTextCard(*a.ctx, answer, a.info.cardId, a.info.newTopic)
 				if err != nil {
 					fmt.Printf("UpdateTextCard error: %v\n", err)
 				}
@@ -76,18 +88,20 @@ func (*MessageAction) Execute(a *ActionInfo) bool {
 			} else {
 				fmt.Println("chatResponseStream closed")
 				timer.Stop()
-				err := updateFinalCard(*a.ctx, answer, a.info.cardId, ifNewTopic)
+				err := updateFinalCard(*a.ctx, answer, a.info.cardId, a.info.newTopic)
 				if err != nil {
 					fmt.Printf("updateFinalCard error: %v\n", err)
 					return false
 				}
 				msg := append(msg, openai.ChatCompletionMessage{
-					Role: "assistant", Content: answer,
+					Role:    openai.ChatMessageRoleAssistant,
+					Content: answer,
+					Name:    msg[0].Name,
 				})
 				a.handler.sessionCache.SetMsg(*a.info.sessionId, msg)
 				if a.info.msgType == "audio" {
 					fileName := *a.info.msgId + ".opus"
-					err := a.handler.gpt.TextToSpeech(answer, fileName)
+					err := a.handler.gpt.TextToSpeech(*a.ctx, answer, fileName)
 					if err != nil {
 						return false
 					}
@@ -129,7 +143,7 @@ func replyWithErrorMsg(ctx context.Context, err error, msgId *string) {
 	replyMsg(ctx, fmt.Sprintf("🤖️：图片下载失败，请稍后再试～\n 错误信息: %v", err), msgId)
 }
 
-func createMultipleVisionMessages(query string, base64Images []string) openai.ChatCompletionMessage {
+func createMultipleVisionMessages(query string, base64Images []string, userId string) openai.ChatCompletionMessage {
 	content := []openai.ChatMessagePart{{Type: "text", Text: query}}
 	for _, base64Image := range base64Images {
 		content = append(content, openai.ChatMessagePart{
@@ -139,5 +153,9 @@ func createMultipleVisionMessages(query string, base64Images []string) openai.Ch
 			},
 		})
 	}
-	return openai.ChatCompletionMessage{Role: "user", MultiContent: content}
+	return openai.ChatCompletionMessage{
+		Role:         openai.ChatMessageRoleUser,
+		MultiContent: content,
+		Name:         userId,
+	}
 }

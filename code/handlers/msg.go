@@ -10,10 +10,10 @@ import (
 	"os"
 
 	"github.com/blacklee123/feishu-openai/initialization"
-	"github.com/blacklee123/feishu-openai/services"
 
 	"github.com/google/uuid"
 	larkcard "github.com/larksuite/oapi-sdk-go/v3/card"
+	larkcontact "github.com/larksuite/oapi-sdk-go/v3/service/contact/v3"
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 )
 
@@ -52,10 +52,32 @@ type MenuOption struct {
 	label string
 }
 
-func replyCard(ctx context.Context,
-	msgId *string,
-	cardContent string,
-) error {
+func retrieveUserInfo(ctx context.Context, userId string) (*larkcontact.User, error) {
+	client := initialization.GetLarkClient()
+	req := larkcontact.NewGetUserReqBuilder().
+		UserIdType(`open_id`).
+		UserId(userId).
+		DepartmentIdType(`open_department_id`).
+		Build()
+
+	// 发起请求
+	resp, err := client.Contact.User.Get(ctx, req)
+
+	// 处理错误
+	if err != nil {
+		fmt.Println(err)
+		return nil, err
+	}
+
+	// 服务端错误处理
+	if !resp.Success() {
+		fmt.Println(resp.Code, resp.Msg, resp.RequestId())
+		return nil, errors.New(resp.Msg)
+	}
+	return resp.Data.User, nil
+}
+
+func replyCard(ctx context.Context, msgId *string, cardContent string) error {
 	client := initialization.GetLarkClient()
 	resp, err := client.Im.Message.Reply(ctx, larkim.NewReplyMessageReqBuilder().
 		MessageId(*msgId).
@@ -352,91 +374,6 @@ func withOneBtn(btn *larkcard.MessageCardEmbedButton) larkcard.
 	return actions
 }
 
-//新建对话按钮
-
-func withPicResolutionBtn(sessionID *string) larkcard.
-	MessageCardElement {
-	resolutionMenu := newMenu("默认分辨率",
-		map[string]interface{}{
-			"value":     "0",
-			"kind":      PicResolutionKind,
-			"sessionId": *sessionID,
-			"msgId":     *sessionID,
-		},
-		// dall-e-2 256, 512, 1024
-		//MenuOption{
-		//	label: "256x256",
-		//	value: string(services.Resolution256),
-		//},
-		//MenuOption{
-		//	label: "512x512",
-		//	value: string(services.Resolution512),
-		//},
-		// dall-e-3
-		MenuOption{
-			label: "1024x1024",
-			value: string(services.Resolution1024),
-		},
-		MenuOption{
-			label: "1024x1792",
-			value: string(services.Resolution10241792),
-		},
-		MenuOption{
-			label: "1792x1024",
-			value: string(services.Resolution17921024),
-		},
-	)
-
-	styleMenu := newMenu("风格",
-		map[string]interface{}{
-			"value":     "0",
-			"kind":      PicStyleKind,
-			"sessionId": *sessionID,
-			"msgId":     *sessionID,
-		},
-		MenuOption{
-			label: "生动风格",
-			value: string(services.PicStyleVivid),
-		},
-		MenuOption{
-			label: "自然风格",
-			value: string(services.PicStyleNatural),
-		},
-	)
-
-	actions := larkcard.NewMessageCardAction().
-		Actions([]larkcard.MessageCardActionElement{resolutionMenu, styleMenu}).
-		Layout(larkcard.MessageCardActionLayoutFlow.Ptr()).
-		Build()
-	return actions
-}
-
-func withVisionDetailLevelBtn(sessionID *string) larkcard.
-	MessageCardElement {
-	detailMenu := newMenu("选择图片解析度，默认为高",
-		map[string]interface{}{
-			"value":     "0",
-			"kind":      VisionStyleKind,
-			"sessionId": *sessionID,
-			"msgId":     *sessionID,
-		},
-		MenuOption{
-			label: "高",
-			value: string(services.VisionDetailHigh),
-		},
-		MenuOption{
-			label: "低",
-			value: string(services.VisionDetailLow),
-		},
-	)
-
-	actions := larkcard.NewMessageCardAction().
-		Actions([]larkcard.MessageCardActionElement{detailMenu}).
-		Layout(larkcard.MessageCardActionLayoutBisected.Ptr()).
-		Build()
-
-	return actions
-}
 func withRoleTagsBtn(sessionID *string, tags ...string) larkcard.
 	MessageCardElement {
 	var menuOptions []MenuOption
@@ -605,6 +542,19 @@ func uploadImage(base64Str string) (*string, error) {
 		return nil, errors.New(resp.Msg)
 	}
 	return resp.Data.ImageKey, nil
+}
+
+func downloadOpus(fileKey string, msgId *string) (string, error) {
+	f := fmt.Sprintf("%s.opus", fileKey)
+
+	req := larkim.NewGetMessageResourceReqBuilder().MessageId(*msgId).FileKey(fileKey).Type("file").Build()
+	resp, err := initialization.GetLarkClient().Im.MessageResource.Get(context.Background(), req)
+	if err != nil {
+		return "", err
+	}
+
+	resp.WriteFile(f)
+	return f, nil
 }
 
 func uploadOpus(f *os.File, fileName string) (string, error) {

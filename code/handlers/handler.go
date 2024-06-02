@@ -48,7 +48,6 @@ func judgeChatType(event *larkim.P2MessageReceiveV1) HandlerType {
 
 type MessageHandler struct {
 	sessionCache services.SessionServiceCacheInterface
-	msgCache     services.MsgCacheInterface
 	gpt          *openai.ChatGPT
 	config       initialization.Config
 	logger       *zap.Logger
@@ -89,7 +88,6 @@ func (m MessageHandler) MsgReceivedHandler(ctx context.Context, event *larkim.P2
 		msgId := event.Event.Message.MessageId
 		rootId := event.Event.Message.RootId
 		chatId := event.Event.Message.ChatId
-		mention := event.Event.Message.Mentions
 
 		sessionId := rootId
 		if sessionId == nil || *sessionId == "" {
@@ -97,17 +95,23 @@ func (m MessageHandler) MsgReceivedHandler(ctx context.Context, event *larkim.P2
 		}
 		qParsed := strings.Trim(parseContent(*content, msgType), " ")
 		m.logger.Info("[receive]", zap.String("messageid", *event.Event.Message.MessageId), zap.String("MessageType", *event.Event.Message.MessageType), zap.String("qParsed", qParsed))
+		imageKeys := []string{}
+		if msgType == "image" {
+			imageKeys = []string{parseImageKey(*content)}
+			qParsed = "描述一下图片中的内容"
+		} else if msgType == "post" {
+			imageKeys = parsePostImageKeys(*content)
+		}
 		msgInfo := MsgInfo{
 			handlerType: handlerType,
 			msgType:     msgType,
 			msgId:       msgId,
 			chatId:      chatId,
+			userId:      event.Event.Sender.SenderId.OpenId,
 			qParsed:     qParsed,
 			fileKey:     parseFileKey(*content),
-			imageKey:    parseImageKey(*content),
-			imageKeys:   parsePostImageKeys(*content),
+			imageKeys:   imageKeys,
 			sessionId:   sessionId,
-			mention:     mention,
 		}
 		data := &ActionInfo{
 			ctx:     &ctx,
@@ -119,8 +123,8 @@ func (m MessageHandler) MsgReceivedHandler(ctx context.Context, event *larkim.P2
 		actions := []Action{
 			&HelpAction{},    //帮助处理
 			&PreAction{},     //预处理
-			&AudioAction{},   //语音处理
 			&PicAction{},     //图片处理
+			&AudioAction{},   //语音处理
 			&MessageAction{}, //消息处理
 		}
 		chain(data, actions...)
@@ -133,7 +137,6 @@ var _ MessageHandlerInterface = (*MessageHandler)(nil)
 func NewMessageHandler(gpt *openai.ChatGPT, config initialization.Config, logger *zap.Logger) MessageHandlerInterface {
 	return &MessageHandler{
 		sessionCache: services.GetSessionCache(),
-		msgCache:     services.GetMsgCache(),
 		gpt:          gpt,
 		config:       config,
 		logger:       logger,

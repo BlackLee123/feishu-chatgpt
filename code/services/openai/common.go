@@ -2,6 +2,7 @@ package openai
 
 import (
 	"github.com/blacklee123/feishu-openai/initialization"
+	"go.uber.org/zap"
 
 	openai "github.com/sashabaranov/go-openai"
 )
@@ -14,16 +15,17 @@ const (
 )
 
 type ChatGPT struct {
-	ApiKey    []string
+	ApiKey    string
 	ApiUrl    string
 	HttpProxy string
 	Model     string
 	MaxTokens int
 	Platform  PlatForm
 	Client    *openai.Client
+	logger    *zap.Logger
 }
 
-func NewChatGPT(config initialization.Config) *ChatGPT {
+func NewChatGPT(config initialization.Config, logger *zap.Logger) *ChatGPT {
 	var client *openai.Client
 	platform := OpenAI
 	if config.AzureOn {
@@ -40,16 +42,17 @@ func NewChatGPT(config initialization.Config) *ChatGPT {
 		client = openai.NewClientWithConfig(azureConfig)
 
 	} else {
-		client = openai.NewClient(config.OpenaiApiKeys[0])
+		client = openai.NewClient(config.OpenaiApiKey)
 	}
 
 	return &ChatGPT{
-		ApiKey:    config.OpenaiApiKeys,
+		ApiKey:    config.OpenaiApiKey,
 		ApiUrl:    config.OpenaiApiUrl,
 		HttpProxy: config.HttpProxy,
 		Model:     config.OpenaiModel,
 		MaxTokens: config.OpenaiMaxTokens,
 		Platform:  platform,
 		Client:    client,
+		logger:    logger,
 	}
 }

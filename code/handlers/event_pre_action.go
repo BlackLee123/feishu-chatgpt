@@ -20,5 +20,6 @@ func (*PreAction) Execute(a *ActionInfo) bool {
 		return false
 	}
 	a.info.cardId = cardId
+	a.info.newTopic = ifNewTopic
 	return true
 }

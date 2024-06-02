@@ -50,9 +50,7 @@ func audioMultipartForm(request AudioToTextRequestBody, w *multipart.Writer) err
 	return nil
 }
 
-func (gpt *ChatGPT) AudioToText(audio string) (string, error) {
-	ctx := context.Background()
-
+func (gpt *ChatGPT) AudioToText(ctx context.Context, audio string) (string, error) {
 	req := openai.AudioRequest{
 		Model:    openai.Whisper1,
 		FilePath: audio,
@@ -66,9 +64,7 @@ func (gpt *ChatGPT) AudioToText(audio string) (string, error) {
 	return resp.Text, nil
 }
 
-func (gpt *ChatGPT) TextToSpeech(text string, fileKey string) error {
-	ctx := context.Background()
-
+func (gpt *ChatGPT) TextToSpeech(ctx context.Context, text string, fileKey string) error {
 	req := openai.CreateSpeechRequest{
 		Model:          openai.TTSModel1,
 		Input:          text,
