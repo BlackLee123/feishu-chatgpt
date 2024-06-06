@@ -30,7 +30,8 @@ config.yaml
 
 
 /code/target/
-start-feishubot
+feishu-openai
+__debug*
 .env
 
 docker.md

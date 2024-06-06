@@ -2,6 +2,7 @@ package openai
 
 import (
 	"bufio"
+	"context"
 	"encoding/base64"
 	"fmt"
 	"image"
@@ -11,6 +12,8 @@ import (
 	"io/ioutil"
 	"mime/multipart"
 	"os"
+
+	openai "github.com/sashabaranov/go-openai"
 )
 
 type ImageGenerationRequestBody struct {
@@ -36,74 +39,33 @@ type ImageVariantRequestBody struct {
 	ResponseFormat string `json:"response_format"`
 }
 
-func (gpt *ChatGPT) GenerateImage(prompt string, size string,
-	n int, style string) ([]string, error) {
-	requestBody := ImageGenerationRequestBody{
+func (gpt *ChatGPT) GenerateImage(prompt string, userId string) ([]string, error) {
+	ctx := context.Background()
+	reqUrl := openai.ImageRequest{
 		Prompt:         prompt,
-		N:              n,
-		Size:           size,
-		ResponseFormat: "b64_json",
-		Model:          "dall-e-3",
-		Style:          style,
+		Size:           openai.CreateImageSize1024x1024,
+		ResponseFormat: openai.CreateImageResponseFormatB64JSON,
+		N:              1,
+		Model:          openai.CreateImageModelDallE3,
+		Style:          openai.CreateImageStyleNatural,
+		User:           userId,
 	}
-
-	imageResponseBody := &ImageResponseBody{}
-	err := gpt.sendRequestWithBodyType(gpt.ApiUrl+"/v1/images/generations",
-		"POST", jsonBody, requestBody, imageResponseBody)
-
+	respUrl, err := gpt.Client.CreateImage(ctx, reqUrl)
 	if err != nil {
+		fmt.Printf("Image creation error: %v\n", err)
 		return nil, err
 	}
+	fmt.Println(respUrl.Data[0].URL)
 
 	var b64Pool []string
-	for _, data := range imageResponseBody.Data {
-		b64Pool = append(b64Pool, data.Base64Json)
+	for _, data := range respUrl.Data {
+		b64Pool = append(b64Pool, data.B64JSON)
 	}
 	return b64Pool, nil
 }
 
-func (gpt *ChatGPT) GenerateOneImage(prompt string,
-	size string, style string) (string, error) {
-	b64s, err := gpt.GenerateImage(prompt, size, 1, style)
-	if err != nil {
-		return "", err
-	}
-	return b64s[0], nil
-}
-
-func (gpt *ChatGPT) GenerateOneImageWithDefaultSize(
-	prompt string) (string, error) {
-	// works for dall-e 2&3
-	return gpt.GenerateOneImage(prompt, "1024x1024", "")
-}
-
-func (gpt *ChatGPT) GenerateImageVariation(images string,
-	size string, n int) ([]string, error) {
-	requestBody := ImageVariantRequestBody{
-		Image:          images,
-		N:              n,
-		Size:           size,
-		ResponseFormat: "b64_json",
-	}
-
-	imageResponseBody := &ImageResponseBody{}
-	err := gpt.sendRequestWithBodyType(gpt.ApiUrl+"/v1/images/variations",
-		"POST", formPictureDataBody, requestBody, imageResponseBody)
-
-	if err != nil {
-		return nil, err
-	}
-
-	var b64Pool []string
-	for _, data := range imageResponseBody.Data {
-		b64Pool = append(b64Pool, data.Base64Json)
-	}
-	return b64Pool, nil
-}
-
-func (gpt *ChatGPT) GenerateOneImageVariation(images string,
-	size string) (string, error) {
-	b64s, err := gpt.GenerateImageVariation(images, size, 1)
+func (gpt *ChatGPT) GenerateOneImage(prompt string, userId string) (string, error) {
+	b64s, err := gpt.GenerateImage(prompt, userId)
 	if err != nil {
 		return "", err
 	}

@@ -2,12 +2,12 @@
 #
 # The release version is controlled from pkg/version
 
-TAG?=4.2.3
-NAME:=feishu-chatgpt
+TAG?=4.3.0
+NAME:=feishu-openai
 DOCKER_REPOSITORY:=blacklee123
 DOCKER_IMAGE_NAME:=$(DOCKER_REPOSITORY)/$(NAME)
 GIT_COMMIT:=$(shell git describe --dirty --always)
-VERSION:=4.2.3
+VERSION:=4.3.0
 EXTRA_RUN_ARGS?=
 
 run:
@@ -46,19 +46,6 @@ build-xx:
 	--load \
 	-f Dockerfile .
 
-build-base:
-	docker build -f Dockerfile.base -t $(DOCKER_REPOSITORY)/static-base:latest .
-
-push-base: build-base
-	docker push $(DOCKER_REPOSITORY)/static-base:latest
-
-test-container:
-	@docker rm -f static || true
-	@docker run -dp 8000:8000 --name=static $(DOCKER_IMAGE_NAME):$(VERSION)
-	@docker ps
-	@TOKEN=$$(curl -sd 'test' localhost:9898/token | jq -r .token) && \
-	curl -sH "Authorization: Bearer $${TOKEN}" localhost:9898/token/validate | grep test
-
 push-container:
 	docker tag $(DOCKER_IMAGE_NAME):$(VERSION) $(DOCKER_IMAGE_NAME):latest
 	docker push $(DOCKER_IMAGE_NAME):$(VERSION)
@@ -79,12 +66,3 @@ swagger:
 	go get github.com/swaggo/swag/gen@latest
 	go get github.com/swaggo/swag/cmd/swag@latest
 	cd pkg/api && $$(go env GOPATH)/bin/swag init -g server.go
-
-.PHONY: cue-mod
-cue-mod:
-	@cd cue && cue get go k8s.io/api/...
-
-.PHONY: cue-gen
-cue-gen:
-	@cd cue && cue fmt ./... && cue vet --all-errors --concrete ./...
-	@cd cue && cue gen

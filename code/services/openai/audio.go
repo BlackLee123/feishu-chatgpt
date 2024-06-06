@@ -2,10 +2,13 @@ package openai
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"os"
+
+	openai "github.com/sashabaranov/go-openai"
 )
 
 type AudioToTextRequestBody struct {
@@ -47,20 +50,50 @@ func audioMultipartForm(request AudioToTextRequestBody, w *multipart.Writer) err
 	return nil
 }
 
-func (gpt *ChatGPT) AudioToText(audio string) (string, error) {
-	requestBody := AudioToTextRequestBody{
-		File:           audio,
-		Model:          "whisper-1",
-		ResponseFormat: "text",
+func (gpt *ChatGPT) AudioToText(ctx context.Context, audio string) (string, error) {
+	client := gpt.Client
+	if gpt.AzureOn {
+		client = gpt.WhisperClient
 	}
-	audioToTextResponseBody := &AudioToTextResponseBody{}
-	err := gpt.sendRequestWithBodyType(gpt.ApiUrl+"/v1/audio/transcriptions",
-		"POST", formVoiceDataBody, requestBody, audioToTextResponseBody)
-	//fmt.Println(audioToTextResponseBody)
+	req := openai.AudioRequest{
+		Model:    openai.Whisper1,
+		FilePath: audio,
+		Format:   openai.AudioResponseFormatText,
+	}
+	resp, err := client.CreateTranscription(ctx, req)
 	if err != nil {
-		//fmt.Println(err)
+		fmt.Printf("Transcription error: %v\n", err)
 		return "", err
 	}
+	return resp.Text, nil
+}
 
-	return audioToTextResponseBody.Text, nil
+func (gpt *ChatGPT) TextToSpeech(ctx context.Context, text string, fileKey string) error {
+	client := gpt.Client
+	if gpt.AzureOn {
+		client = gpt.TtsClient
+	}
+	req := openai.CreateSpeechRequest{
+		Model:          openai.TTSModel1,
+		Input:          text,
+		ResponseFormat: openai.SpeechResponseFormatOpus,
+		Voice:          openai.VoiceNova,
+	}
+	res, err := client.CreateSpeech(ctx, req)
+	if err != nil {
+		return err
+	}
+	defer res.Close()
+
+	buf, err := io.ReadAll(res)
+	if err != nil {
+		return err
+	}
+
+	// save buf to file as mp3
+	err = os.WriteFile(fileKey, buf, 0644)
+	if err != nil {
+		return err
+	}
+	return err
 }

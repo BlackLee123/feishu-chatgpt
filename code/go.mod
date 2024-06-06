@@ -1,22 +1,18 @@
-module start-feishubot
+module github.com/blacklee123/feishu-openai
 
-go 1.18
-
-require github.com/larksuite/oapi-sdk-go/v3 v3.0.14
+go 1.22
 
 require (
-	github.com/creack/pty v1.1.20
 	github.com/duke-git/lancet/v2 v2.1.17
-	github.com/getsentry/sentry-go v0.20.0
 	github.com/gin-gonic/gin v1.8.2
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/larksuite/oapi-sdk-gin v1.0.0
+	github.com/larksuite/oapi-sdk-go/v3 v3.2.5
 	github.com/pandodao/tokenizer-go v0.2.0
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/pion/opus v0.0.0-20230123082803-1052c3e89e58
-	github.com/sashabaranov/go-openai v1.13.0
-	github.com/sirupsen/logrus v1.9.0
+	github.com/sashabaranov/go-openai v1.24.1
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.14.0
 	go.uber.org/zap v1.24.0
@@ -24,6 +20,7 @@ require (
 )
 
 require (
+	github.com/creack/pty v1.1.21 // indirect
 	github.com/dlclark/regexp2 v1.8.1 // indirect
 	github.com/dop251/goja v0.0.0-20230304130813-e2f543bf4b4c // indirect
 	github.com/dop251/goja_nodejs v0.0.0-20230226152057-060fa99b809f // indirect
@@ -34,6 +31,7 @@ require (
 	github.com/go-playground/validator/v10 v10.11.1 // indirect
 	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/goccy/go-json v0.10.0 // indirect
+	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/pprof v0.0.0-20230309165930-d61513b1440d // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -61,5 +59,3 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-//replace github.com/sashabaranov/go-openai v1.13.0 => github.com/Leizhenpeng/go-openai v0.0.3

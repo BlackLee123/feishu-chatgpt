@@ -2,85 +2,118 @@ package main
 
 import (
 	"context"
-	"start-feishubot/handlers"
-	"start-feishubot/initialization"
-	"start-feishubot/services/openai"
+	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"strings"
+	"syscall"
 
+	"github.com/blacklee123/feishu-openai/handlers"
+	"github.com/blacklee123/feishu-openai/version"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/getsentry/sentry-go"
-	sentrygin "github.com/getsentry/sentry-go/gin"
-	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
-
-	larkcard "github.com/larksuite/oapi-sdk-go/v3/card"
-
-	"github.com/gin-gonic/gin"
+	larkcore "github.com/larksuite/oapi-sdk-go/v3/core"
+	larkws "github.com/larksuite/oapi-sdk-go/v3/ws"
 	"github.com/spf13/pflag"
+	"github.com/spf13/viper"
 
-	sdkginext "github.com/larksuite/oapi-sdk-gin"
-
+	lark "github.com/larksuite/oapi-sdk-go/v3"
 	"github.com/larksuite/oapi-sdk-go/v3/event/dispatcher"
 )
 
 func main() {
+	fs := pflag.NewFlagSet("default", pflag.ContinueOnError)
+	fs.String("FEISHU_APP_ID", "", "FEISHU_APP_ID")
+	fs.String("FEISHU_APP_SECRET", "", "FEISHU_APP_SECRET")
+	fs.String("FEISHU_ENCRYPT_KEY", "", "FEISHU_ENCRYPT_KEY")
+	fs.String("FEISHU_VERIFICATION_TOKEN", "", "FEISHU_VERIFICATION_TOKEN")
+	fs.String("OPENAI_MODEL", "", "OPENAI_MODEL")
+	fs.String("OPENAI_KEY", "", "OPENAI_KEY")
+	fs.Int("OPENAI_MAX_TOKENS", 2000, "OPENAI_MAX_TOKENS")
+	fs.String("OPENAI_API_URL", "https://api.openai.com", "OPENAI_API_URL")
+	fs.String("HTTP_PROXY", "", "HTTP_PROXY")
+	fs.Bool("AZURE_ON", false, "AZURE_ON")
+
+	fs.String("AZURE_ENDPOINT", "", "AZURE_ENDPOINT")
+	fs.String("AZURE_APIVERSION", "", "AZURE_APIVERSION")
+	fs.String("AZURE_OPENAI_TOKEN", "", "AZURE_OPENAI_TOKEN")
+	fs.String("AZURE_DEPLOYMENT_NAME", "gpt-4o", "AZURE_DEPLOYMENT_NAME")
+	fs.String("AZURE_DALLE_DEPLOYMENT_NAME", "dall-e-3", "AZURE_DALLE_DEPLOYMENT_NAME")
+
+	fs.String("AZURE_WHISPER_ENDPOINT", "", "AZURE_WHISPER_ENDPOINT")
+	fs.String("AZURE_WHISPER_APIVERSION", "", "AZURE_WHISPER_APIVERSION")
+	fs.String("AZURE_WHISPER_OPENAI_TOKEN", "", "AZURE_WHISPER_OPENAI_TOKEN")
+	fs.String("AZURE_WHISPER_DEPLOYMENT_NAME", "whisper-1", "AZURE_WHISPER_DEPLOYMENT_NAME")
+
+	fs.String("AZURE_TTS_ENDPOINT", "", "AZURE_TTS_ENDPOINT")
+	fs.String("AZURE_TTS_APIVERSION", "", "AZURE_TTS_APIVERSION")
+	fs.String("AZURE_TTS_OPENAI_TOKEN", "", "AZURE_TTS_OPENAI")
+	fs.String("AZURE_TTS_DEPLOYMENT_NAME", "tts-1", "AZURE_TTS_DEPLOYMENT_NAME")
+
+	fs.String("config-path", "config", "config dir path")
+	fs.String("config", "config.yaml", "apiserver config file path")
+	fs.String("level", "info", "log level debug, info, warn, error, fatal or panic")
+
+	versionFlag := fs.BoolP("version", "v", false, "get version number")
+
+	err := fs.Parse(os.Args[1:])
+	switch {
+	case err == pflag.ErrHelp:
+		os.Exit(0)
+	case err != nil:
+		fmt.Fprintf(os.Stderr, "Error: %s\n\n", err.Error())
+		fs.PrintDefaults()
+		os.Exit(2)
+	case *versionFlag:
+		fmt.Println(version.VERSION)
+		os.Exit(0)
+	}
+	viper.BindPFlags(fs)
+	viper.AutomaticEnv()
+
+	// load config from file
+	if _, fileErr := os.Stat(filepath.Join(viper.GetString("config-path"), viper.GetString("config"))); fileErr == nil {
+		viper.SetConfigName(strings.Split(viper.GetString("config"), ".")[0])
+		viper.AddConfigPath(viper.GetString("config-path"))
+		if readErr := viper.ReadInConfig(); readErr != nil {
+			fmt.Printf("Error reading config file, %v\n", readErr)
+		}
+	}
+
 	// configure logging
-	logger, _ := initZap("debug")
+	logger, _ := initZap(viper.GetString("level"))
 	defer logger.Sync()
 	stdLog := zap.RedirectStdLog(logger)
 	defer stdLog()
 
-	// To initialize Sentry's handler, you need to initialize Sentry itself beforehand
-	if err := sentry.Init(sentry.ClientOptions{
-		Dsn:           "https://78731d69470e4f09ae1590be0ae2ec6d@o428088.ingest.sentry.io/4505040835837952",
-		EnableTracing: true,
-		// Set TracesSampleRate to 1.0 to capture 100%
-		// of transactions for performance monitoring.
-		// We recommend adjusting this value in production,
-		TracesSampleRate: 1.0,
-	}); err != nil {
-		logger.Error("Sentry initialization failed", zap.Error(err))
+	var config handlers.Config
+	// 打印当前从viper读取到的所有配置
+	log.Printf("Current Viper settings: %v\n", viper.AllSettings())
+	if err := viper.Unmarshal(&config); err != nil {
+		log.Panic("config unmarshal failed", err)
 	}
-
-	initialization.InitRoleList()
-	pflag.Parse()
-	config := initialization.GetConfig()
-	initialization.LoadLarkClient(*config)
-	gpt := openai.NewChatGPT(*config)
-	handlers.InitHandlers(gpt, *config, logger)
+	// 绑定设置到config结构体并确保值都成功加载
+	log.Printf("Unmarshaled configuration: %+v\n", config)
+	larkClient := lark.NewClient(config.FeishuAppId, config.FeishuAppSecret)
+	gpt := handlers.NewChatGPT(config, logger)
+	handler := handlers.NewMessageHandler(gpt, config, logger, larkClient)
 
 	eventHandler := dispatcher.NewEventDispatcher(
-		config.FeishuAppVerificationToken, config.FeishuAppEncryptKey).
-		OnP2MessageReceiveV1(handlers.Handler).
-		OnP2MessageReadV1(func(ctx context.Context, event *larkim.P2MessageReadV1) error {
-			return handlers.ReadHandler(ctx, event)
-		})
-
-	cardHandler := larkcard.NewCardActionHandler(
-		config.FeishuAppVerificationToken, config.FeishuAppEncryptKey,
-		handlers.CardHandler())
-
-	gin.ForceConsoleColor()
-	r := gin.Default()
-	r.Use(sentrygin.New(sentrygin.Options{}))
-	r.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "pong",
-		})
-	})
-	r.GET("/test", func(c *gin.Context) {
-		panic("y tho")
-	})
-	r.POST("/webhook/event",
-		sdkginext.NewEventHandlerFunc(eventHandler))
-	r.POST("/webhook/card",
-		sdkginext.NewCardActionHandlerFunc(
-			cardHandler))
-
-	err := initialization.StartServer(*config, r)
-	if err != nil {
-		logger.Fatal("failed to start server", zap.Error(err))
-	}
+		config.FeishuVerificationToken, config.FeishuEncryptKey).
+		OnP2MessageReceiveV1(handler.MsgReceivedHandler)
+	go func() {
+		larkWsClient := larkws.NewClient(config.FeishuAppId, config.FeishuAppSecret, larkws.WithEventHandler(eventHandler), larkws.WithLogLevel(larkcore.LogLevelDebug))
+		err := larkWsClient.Start(context.Background())
+		if err != nil {
+			logger.Fatal("larkws  启动失败", zap.Error(err))
+		}
+	}()
+	sc := make(chan os.Signal, 1)
+	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+	<-sc
 
 }
 

@@ -1,6 +1,9 @@
 package utils
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+)
 
 func CutPrefix(s, prefix string) (string, bool) {
 	if strings.HasPrefix(s, prefix) {
@@ -35,4 +38,15 @@ func EitherTrimEqual(s string, prefix ...string) (string, bool) {
 		}
 	}
 	return s, false
+}
+
+func MatchPicture(input string) (bool, string) {
+	pattern := `/pic (\S+)`
+	re := regexp.MustCompile(pattern)
+	matches := re.FindStringSubmatch(input)
+
+	if len(matches) > 1 {
+		return true, matches[1]
+	}
+	return false, ""
 }

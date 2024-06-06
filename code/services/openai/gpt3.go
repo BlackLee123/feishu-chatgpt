@@ -1,11 +1,12 @@
 package openai
 
 import (
+	"context"
 	"errors"
-	"start-feishubot/logger"
-	"strings"
+	"io"
 
-	"github.com/pandodao/tokenizer-go"
+	openai "github.com/sashabaranov/go-openai"
+	"go.uber.org/zap"
 )
 
 type AIMode float64
@@ -52,48 +53,53 @@ type ChatGPTChoiceItem struct {
 	FinishReason string   `json:"finish_reason"`
 }
 
-// ChatGPTRequestBody 响应体
-type ChatGPTRequestBody struct {
-	Model            string     `json:"model"`
-	Messages         []Messages `json:"messages"`
-	MaxTokens        int        `json:"max_tokens"`
-	Temperature      AIMode     `json:"temperature"`
-	TopP             int        `json:"top_p"`
-	FrequencyPenalty int        `json:"frequency_penalty"`
-	PresencePenalty  int        `json:"presence_penalty"`
-}
-
-func (msg *Messages) CalculateTokenLength() int {
-	text := strings.TrimSpace(msg.Content)
-	return tokenizer.MustCalToken(text)
-}
-
-func (gpt *ChatGPT) Completions(msg []Messages, aiMode AIMode) (resp Messages,
-	err error) {
-	requestBody := ChatGPTRequestBody{
-		Model:            gpt.Model,
+func (gpt *ChatGPT) Completions(ctx context.Context, msg []openai.ChatCompletionMessage) (openai.ChatCompletionMessage, error) {
+	resp, err := gpt.Client.CreateChatCompletion(context.Background(), openai.ChatCompletionRequest{
+		Model:            openai.GPT4o,
 		Messages:         msg,
 		MaxTokens:        gpt.MaxTokens,
-		Temperature:      aiMode,
 		TopP:             1,
 		FrequencyPenalty: 0,
 		PresencePenalty:  0,
+	},
+	)
+
+	if err != nil {
+		gpt.Logger.Error("ChatCompletion error", zap.Error(err))
+		return openai.ChatCompletionMessage{}, err
 	}
-	gptResponseBody := &ChatGPTResponseBody{}
-	url := gpt.FullUrl("chat/completions")
-	//fmt.Println(url)
-	logger.Debug(url)
-	logger.Debug("request body ", requestBody)
-	if url == "" {
-		return resp, errors.New("无法获取openai请求地址")
+
+	return resp.Choices[0].Message, nil
+}
+
+func (gpt *ChatGPT) StreamChat(ctx context.Context, msgs []openai.ChatCompletionMessage, responseStream chan<- string) error {
+	defer close(responseStream)
+	req := openai.ChatCompletionRequest{
+		Model:     openai.GPT4o,
+		Messages:  msgs,
+		MaxTokens: 2000,
+		Stream:    true,
 	}
-	err = gpt.sendRequestWithBodyType(url, "POST", jsonBody, requestBody, gptResponseBody)
-	if err == nil && len(gptResponseBody.Choices) > 0 {
-		resp = gptResponseBody.Choices[0].Message
-	} else {
-		logger.Errorf("ERROR %v", err)
-		resp = Messages{}
-		err = errors.New("openai 请求失败")
+	stream, err := gpt.Client.CreateChatCompletionStream(ctx, req)
+	if err != nil {
+		gpt.Logger.Error("ChatCompletionStream error", zap.Error(err))
+		return err
 	}
-	return resp, err
+	defer stream.Close()
+
+	for {
+		response, err := stream.Recv()
+		if errors.Is(err, io.EOF) {
+			return nil
+		}
+		if err != nil {
+			gpt.Logger.Error("Stream error", zap.Error(err))
+			return err
+		}
+		if len(response.Choices) > 0 {
+			responseStream <- response.Choices[0].Delta.Content
+			gpt.Logger.Debug("response", zap.String("content", response.Choices[0].Delta.Content))
+		}
+
+	}
 }
