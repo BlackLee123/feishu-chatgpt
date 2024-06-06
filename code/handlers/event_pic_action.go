@@ -14,11 +14,11 @@ func (*PicAction) Execute(a *ActionInfo) bool {
 	if matched, prompt := utils.MatchPicture(a.info.qParsed); matched {
 		bs64, err := a.handler.gpt.GenerateOneImage(prompt, *a.info.userId)
 		if err != nil {
-			replyMsg(*a.ctx, fmt.Sprintf(
+			a.replyMsg(*a.ctx, fmt.Sprintf(
 				"🤖️：图片生成失败，请稍后再试～\n错误信息: %v", err), a.info.msgId)
 			return false
 		}
-		UpdateImageCard(*a.ctx, bs64, a.info.cardId, a.info.sessionId, a.info.qParsed)
+		a.UpdateImageCard(*a.ctx, bs64, a.info.cardId, a.info.sessionId, a.info.qParsed)
 		// replayImageCardByBase64(*a.ctx, bs64, a.info.msgId, a.info.sessionId, a.info.qParsed)
 		return false
 	}

@@ -9,8 +9,6 @@ import (
 	"log"
 	"os"
 
-	"github.com/blacklee123/feishu-openai/initialization"
-
 	"github.com/google/uuid"
 	larkcard "github.com/larksuite/oapi-sdk-go/v3/card"
 	larkcontact "github.com/larksuite/oapi-sdk-go/v3/service/contact/v3"
@@ -52,8 +50,8 @@ type MenuOption struct {
 	label string
 }
 
-func retrieveUserInfo(ctx context.Context, userId string) (*larkcontact.User, error) {
-	client := initialization.GetLarkClient()
+func (a *ActionInfo) retrieveUserInfo(ctx context.Context, userId string) (*larkcontact.User, error) {
+	client := a.larkClient
 	req := larkcontact.NewGetUserReqBuilder().
 		UserIdType(`open_id`).
 		UserId(userId).
@@ -77,8 +75,8 @@ func retrieveUserInfo(ctx context.Context, userId string) (*larkcontact.User, er
 	return resp.Data.User, nil
 }
 
-func replyCard(ctx context.Context, msgId *string, cardContent string) error {
-	client := initialization.GetLarkClient()
+func (a *ActionInfo) replyCard(ctx context.Context, msgId *string, cardContent string) error {
+	client := a.larkClient
 	resp, err := client.Im.Message.Reply(ctx, larkim.NewReplyMessageReqBuilder().
 		MessageId(*msgId).
 		Body(larkim.NewReplyMessageReqBodyBuilder().
@@ -454,12 +452,12 @@ func withAIModeBtn(sessionID *string, aiModeStrs []string) larkcard.MessageCardE
 	return actions
 }
 
-func replyMsg(ctx context.Context, msg string, msgId *string) error {
+func (a *ActionInfo) replyMsg(ctx context.Context, msg string, msgId *string) error {
 	msg, i := processMessage(msg)
 	if i != nil {
 		return i
 	}
-	client := initialization.GetLarkClient()
+	client := a.larkClient
 	content := larkim.NewTextMsgBuilder().
 		Text(msg).
 		Build()
@@ -487,11 +485,11 @@ func replyMsg(ctx context.Context, msg string, msgId *string) error {
 	return nil
 }
 
-func replyAudio(ctx context.Context, fileKey string, msgId *string) error {
+func (a *ActionInfo) replyAudio(ctx context.Context, fileKey string, msgId *string) error {
 	audioMessage := larkim.MessageAudio{
 		FileKey: fileKey,
 	}
-	client := initialization.GetLarkClient()
+	client := a.larkClient
 	content, _ := audioMessage.String()
 	resp, err := client.Im.Message.Reply(ctx, larkim.NewReplyMessageReqBuilder().
 		MessageId(*msgId).
@@ -515,13 +513,13 @@ func replyAudio(ctx context.Context, fileKey string, msgId *string) error {
 	return nil
 }
 
-func uploadImage(base64Str string) (*string, error) {
+func (a *ActionInfo) uploadImage(base64Str string) (*string, error) {
 	imageBytes, err := base64.StdEncoding.DecodeString(base64Str)
 	if err != nil {
 		fmt.Println(err)
 		return nil, err
 	}
-	client := initialization.GetLarkClient()
+	client := a.larkClient
 	resp, err := client.Im.Image.Create(context.Background(),
 		larkim.NewCreateImageReqBuilder().
 			Body(larkim.NewCreateImageReqBodyBuilder().
@@ -544,11 +542,11 @@ func uploadImage(base64Str string) (*string, error) {
 	return resp.Data.ImageKey, nil
 }
 
-func downloadOpus(fileKey string, msgId *string) (string, error) {
+func (a *ActionInfo) downloadOpus(fileKey string, msgId *string) (string, error) {
 	f := fmt.Sprintf("%s.opus", fileKey)
 
 	req := larkim.NewGetMessageResourceReqBuilder().MessageId(*msgId).FileKey(fileKey).Type("file").Build()
-	resp, err := initialization.GetLarkClient().Im.MessageResource.Get(context.Background(), req)
+	resp, err := a.larkClient.Im.MessageResource.Get(context.Background(), req)
 	if err != nil {
 		return "", err
 	}
@@ -557,7 +555,7 @@ func downloadOpus(fileKey string, msgId *string) (string, error) {
 	return f, nil
 }
 
-func uploadOpus(f *os.File, fileName string) (string, error) {
+func (a *ActionInfo) uploadOpus(f *os.File, fileName string) (string, error) {
 	audioReq := larkim.NewCreateFileReqBuilder().
 		Body(larkim.NewCreateFileReqBodyBuilder().
 			FileType("opus").
@@ -565,7 +563,7 @@ func uploadOpus(f *os.File, fileName string) (string, error) {
 			File(f).
 			Build()).
 		Build()
-	client := initialization.GetLarkClient()
+	client := a.larkClient
 	resp, err := client.Im.File.Create(context.Background(), audioReq)
 	// 处理错误
 	if err != nil {
@@ -581,7 +579,7 @@ func uploadOpus(f *os.File, fileName string) (string, error) {
 	return *resp.Data.FileKey, nil
 }
 
-func replyImage(ctx context.Context, ImageKey *string,
+func (a *ActionInfo) replyImage(ctx context.Context, ImageKey *string,
 	msgId *string) error {
 	//fmt.Println("sendMsg", ImageKey, msgId)
 
@@ -591,7 +589,7 @@ func replyImage(ctx context.Context, ImageKey *string,
 		fmt.Println(err)
 		return err
 	}
-	client := initialization.GetLarkClient()
+	client := a.larkClient
 
 	resp, err := client.Im.Message.Reply(ctx, larkim.NewReplyMessageReqBuilder().
 		MessageId(*msgId).
@@ -616,8 +614,8 @@ func replyImage(ctx context.Context, ImageKey *string,
 	return nil
 }
 
-func UpdateImageCard(ctx context.Context, base64Str string, msgId *string, sessionId *string, question string) error {
-	imageKey, err := uploadImage(base64Str)
+func (a *ActionInfo) UpdateImageCard(ctx context.Context, base64Str string, msgId *string, sessionId *string, question string) error {
+	imageKey, err := a.uploadImage(base64Str)
 	if err != nil {
 		return err
 	}
@@ -628,67 +626,67 @@ func UpdateImageCard(ctx context.Context, base64Str string, msgId *string, sessi
 		withImg(*imageKey, question),
 		withNote("已完成，您可以继续提问或者选择其他功能。"))
 
-	err = PatchCard(ctx, msgId, newCard)
+	err = a.PatchCard(ctx, msgId, newCard)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func replayImageCardByBase64(ctx context.Context, base64Str string, msgId *string, sessionId *string, question string) error {
-	imageKey, err := uploadImage(base64Str)
+func (a *ActionInfo) replayImageCardByBase64(ctx context.Context, base64Str string, msgId *string, sessionId *string, question string) error {
+	imageKey, err := a.uploadImage(base64Str)
 	if err != nil {
 		return err
 	}
 	//example := "img_v2_041b28e3-5680-48c2-9af2-497ace79333g"
 	//imageKey := &example
 	//fmt.Println("imageKey", *imageKey)
-	err = sendImageCard(ctx, *imageKey, msgId, sessionId, question)
+	err = a.sendImageCard(ctx, *imageKey, msgId, sessionId, question)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func replayImagePlainByBase64(ctx context.Context, base64Str string,
+func (a *ActionInfo) replayImagePlainByBase64(ctx context.Context, base64Str string,
 	msgId *string) error {
-	imageKey, err := uploadImage(base64Str)
+	imageKey, err := a.uploadImage(base64Str)
 	if err != nil {
 		return err
 	}
 	//example := "img_v2_041b28e3-5680-48c2-9af2-497ace79333g"
 	//imageKey := &example
 	//fmt.Println("imageKey", *imageKey)
-	err = replyImage(ctx, imageKey, msgId)
+	err = a.replyImage(ctx, imageKey, msgId)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func replayVariantImageByBase64(ctx context.Context, base64Str string,
+func (a *ActionInfo) replayVariantImageByBase64(ctx context.Context, base64Str string,
 	msgId *string, sessionId *string) error {
-	imageKey, err := uploadImage(base64Str)
+	imageKey, err := a.uploadImage(base64Str)
 	if err != nil {
 		return err
 	}
 	//example := "img_v2_041b28e3-5680-48c2-9af2-497ace79333g"
 	//imageKey := &example
 	//fmt.Println("imageKey", *imageKey)
-	err = sendVarImageCard(ctx, *imageKey, msgId, sessionId)
+	err = a.sendVarImageCard(ctx, *imageKey, msgId, sessionId)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func sendMsg(ctx context.Context, msg string, chatId *string) error {
+func (a *ActionInfo) sendMsg(ctx context.Context, msg string, chatId *string) error {
 	//fmt.Println("sendMsg", msg, chatId)
 	msg, i := processMessage(msg)
 	if i != nil {
 		return i
 	}
-	client := initialization.GetLarkClient()
+	client := a.larkClient
 	content := larkim.NewTextMsgBuilder().
 		Text(msg).
 		Build()
@@ -718,13 +716,13 @@ func sendMsg(ctx context.Context, msg string, chatId *string) error {
 	return nil
 }
 
-func alert(ctx context.Context, msg string) error {
+func (a *ActionInfo) alert(ctx context.Context, msg string) error {
 	//fmt.Println("sendMsg", msg, chatId)
 	msg, i := processMessage(msg)
 	if i != nil {
 		return i
 	}
-	client := initialization.GetLarkClient()
+	client := a.larkClient
 	content := larkim.NewTextMsgBuilder().
 		Text(msg).
 		Build()
@@ -755,34 +753,34 @@ func alert(ctx context.Context, msg string) error {
 	return nil
 }
 
-func sendSystemInstructionCard(ctx context.Context,
+func (a *ActionInfo) sendSystemInstructionCard(ctx context.Context,
 	sessionId *string, msgId *string, content string) {
 	newCard, _ := newSendCard(
 		withHeader("🥷  已进入角色扮演模式", larkcard.TemplateIndigo),
 		withMainText(content),
 		withNote("请注意，这将开始一个全新的对话，您将无法利用之前话题的历史信息"))
-	replyCard(ctx, msgId, newCard)
+	a.replyCard(ctx, msgId, newCard)
 }
 
-func sendNewTopicCard(ctx context.Context,
+func (a *ActionInfo) sendNewTopicCard(ctx context.Context,
 	sessionId *string, msgId *string, content string) {
 	newCard, _ := newSendCard(
 		withHeader("👻️ 已开启新的话题", larkcard.TemplateBlue),
 		withMainMd(content),
 		withNote("提醒：点击对话框参与回复，可保持话题连贯"))
-	replyCard(ctx, msgId, newCard)
+	a.replyCard(ctx, msgId, newCard)
 }
 
-func sendOldTopicCard(ctx context.Context,
+func (a *ActionInfo) sendOldTopicCard(ctx context.Context,
 	sessionId *string, msgId *string, content string) {
 	newCard, _ := newSendCard(
 		withHeader("🔃️ 上下文的话题", larkcard.TemplateBlue),
 		withMainMd(content),
 		withNote("提醒：点击对话框参与回复，可保持话题连贯"))
-	replyCard(ctx, msgId, newCard)
+	a.replyCard(ctx, msgId, newCard)
 }
 
-func sendHelpCard(ctx context.Context,
+func (a *ActionInfo) sendHelpCard(ctx context.Context,
 	sessionId *string, msgId *string) {
 	newCard, _ := newSendCard(
 		withHeader("需要帮助吗？", larkcard.TemplateBlue),
@@ -790,19 +788,19 @@ func sendHelpCard(ctx context.Context,
 		withSplitLine(),
 		withMainMd("直接输入文字和文字+图片聊天"),
 	)
-	replyCard(ctx, msgId, newCard)
+	a.replyCard(ctx, msgId, newCard)
 }
 
-func sendImageCard(ctx context.Context, imageKey string,
+func (a *ActionInfo) sendImageCard(ctx context.Context, imageKey string,
 	msgId *string, sessionId *string, question string) error {
 	newCard, _ := newSimpleSendCard(
 		withImageDiv(imageKey),
 	)
-	replyCard(ctx, msgId, newCard)
+	a.replyCard(ctx, msgId, newCard)
 	return nil
 }
 
-func sendVarImageCard(ctx context.Context, imageKey string,
+func (a *ActionInfo) sendVarImageCard(ctx context.Context, imageKey string,
 	msgId *string, sessionId *string) error {
 	newCard, _ := newSimpleSendCard(
 		withImageDiv(imageKey),
@@ -816,41 +814,41 @@ func sendVarImageCard(ctx context.Context, imageKey string,
 			"sessionId": *sessionId,
 		}, larkcard.MessageCardButtonTypePrimary)),
 	)
-	replyCard(ctx, msgId, newCard)
+	a.replyCard(ctx, msgId, newCard)
 	return nil
 }
 
-func SendRoleTagsCard(ctx context.Context,
+func (a *ActionInfo) SendRoleTagsCard(ctx context.Context,
 	sessionId *string, msgId *string, roleTags []string) {
 	newCard, _ := newSendCard(
 		withHeader("🛖 请选择角色类别", larkcard.TemplateIndigo),
 		withRoleTagsBtn(sessionId, roleTags...),
 		withNote("提醒：选择角色所属分类，以便我们为您推荐更多相关角色。"))
-	err := replyCard(ctx, msgId, newCard)
+	err := a.replyCard(ctx, msgId, newCard)
 	if err != nil {
 		log.Printf("选择角色出错 %v", err)
 	}
 }
 
-func SendRoleListCard(ctx context.Context,
+func (a *ActionInfo) SendRoleListCard(ctx context.Context,
 	sessionId *string, msgId *string, roleTag string, roleList []string) {
 	newCard, _ := newSendCard(
 		withHeader("🛖 角色列表"+" - "+roleTag, larkcard.TemplateIndigo),
 		withRoleBtn(sessionId, roleList...),
 		withNote("提醒：选择内置场景，快速进入角色扮演模式。"))
-	replyCard(ctx, msgId, newCard)
+	a.replyCard(ctx, msgId, newCard)
 }
 
-func SendAIModeListsCard(ctx context.Context,
+func (a *ActionInfo) SendAIModeListsCard(ctx context.Context,
 	sessionId *string, msgId *string, aiModeStrs []string) {
 	newCard, _ := newSendCard(
 		withHeader("🤖 发散模式选择", larkcard.TemplateIndigo),
 		withAIModeBtn(sessionId, aiModeStrs),
 		withNote("提醒：选择内置模式，让AI更好的理解您的需求。"))
-	replyCard(ctx, msgId, newCard)
+	a.replyCard(ctx, msgId, newCard)
 }
 
-func sendOnProcessCard(ctx context.Context,
+func (a *ActionInfo) sendOnProcessCard(ctx context.Context,
 	sessionId *string, msgId *string, ifNewTopic bool) (*string,
 	error) {
 	var newCard string
@@ -864,14 +862,14 @@ func sendOnProcessCard(ctx context.Context,
 			withNote("正在思考，请稍等..."))
 	}
 
-	id, err := replyCardWithBackId(ctx, msgId, newCard)
+	id, err := a.replyCardWithBackId(ctx, msgId, newCard)
 	if err != nil {
 		return nil, err
 	}
 	return id, nil
 }
 
-func UpdateTextCard(ctx context.Context, msg string, msgId *string, ifNewTopic bool) error {
+func (a *ActionInfo) UpdateTextCard(ctx context.Context, msg string, msgId *string, ifNewTopic bool) error {
 	var newCard string
 	if ifNewTopic {
 		newCard, _ = newSendCard(
@@ -884,13 +882,13 @@ func UpdateTextCard(ctx context.Context, msg string, msgId *string, ifNewTopic b
 			withMainMd(msg),
 			withNote("正在生成，请稍等..."))
 	}
-	err := PatchCard(ctx, msgId, newCard)
+	err := a.PatchCard(ctx, msgId, newCard)
 	if err != nil {
 		return err
 	}
 	return nil
 }
-func updateFinalCard(
+func (a *ActionInfo) updateFinalCard(
 	ctx context.Context,
 	msg string,
 	msgId *string,
@@ -909,7 +907,7 @@ func updateFinalCard(
 			withMainMd(msg),
 			withNote("已完成，您可以继续提问或者选择其他功能。"))
 	}
-	err := PatchCard(ctx, msgId, newCard)
+	err := a.PatchCard(ctx, msgId, newCard)
 	if err != nil {
 		return err
 	}
@@ -935,10 +933,10 @@ func newSendCardWithOutHeader(
 	return cardContent, err
 }
 
-func PatchCard(ctx context.Context, msgId *string,
+func (a *ActionInfo) PatchCard(ctx context.Context, msgId *string,
 	cardContent string) error {
 	//fmt.Println("sendMsg", msg, chatId)
-	client := initialization.GetLarkClient()
+	client := a.larkClient
 	//content := larkim.NewTextMsgBuilder().
 	//	Text(msg).
 	//	Build()
@@ -966,11 +964,11 @@ func PatchCard(ctx context.Context, msgId *string,
 	return nil
 }
 
-func replyCardWithBackId(ctx context.Context,
+func (a *ActionInfo) replyCardWithBackId(ctx context.Context,
 	msgId *string,
 	cardContent string,
 ) (*string, error) {
-	client := initialization.GetLarkClient()
+	client := a.larkClient
 	resp, err := client.Im.Message.Reply(ctx, larkim.NewReplyMessageReqBuilder().
 		MessageId(*msgId).
 		Body(larkim.NewReplyMessageReqBodyBuilder().

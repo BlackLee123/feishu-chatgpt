@@ -51,12 +51,16 @@ func audioMultipartForm(request AudioToTextRequestBody, w *multipart.Writer) err
 }
 
 func (gpt *ChatGPT) AudioToText(ctx context.Context, audio string) (string, error) {
+	client := gpt.Client
+	if gpt.AzureOn {
+		client = gpt.WhisperClient
+	}
 	req := openai.AudioRequest{
 		Model:    openai.Whisper1,
 		FilePath: audio,
 		Format:   openai.AudioResponseFormatText,
 	}
-	resp, err := gpt.Client.CreateTranscription(ctx, req)
+	resp, err := client.CreateTranscription(ctx, req)
 	if err != nil {
 		fmt.Printf("Transcription error: %v\n", err)
 		return "", err
@@ -65,13 +69,17 @@ func (gpt *ChatGPT) AudioToText(ctx context.Context, audio string) (string, erro
 }
 
 func (gpt *ChatGPT) TextToSpeech(ctx context.Context, text string, fileKey string) error {
+	client := gpt.Client
+	if gpt.AzureOn {
+		client = gpt.TtsClient
+	}
 	req := openai.CreateSpeechRequest{
 		Model:          openai.TTSModel1,
 		Input:          text,
 		ResponseFormat: openai.SpeechResponseFormatOpus,
 		Voice:          openai.VoiceNova,
 	}
-	res, err := gpt.Client.CreateSpeech(ctx, req)
+	res, err := client.CreateSpeech(ctx, req)
 	if err != nil {
 		return err
 	}

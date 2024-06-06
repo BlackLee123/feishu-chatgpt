@@ -6,7 +6,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/blacklee123/feishu-openai/initialization"
 	myopenai "github.com/blacklee123/feishu-openai/services/openai"
 	larkim "github.com/larksuite/oapi-sdk-go/v3/service/im/v1"
 	openai "github.com/sashabaranov/go-openai"
@@ -20,7 +19,7 @@ func (*MessageAction) Execute(a *ActionInfo) bool {
 	msg := a.handler.sessionCache.GetMsg(*a.info.sessionId)
 	if a.info.newTopic {
 		userName := ""
-		user, err := retrieveUserInfo(*a.ctx, *a.info.userId)
+		user, err := a.retrieveUserInfo(*a.ctx, *a.info.userId)
 		if err != nil {
 			userName = *a.info.userId
 		} else {
@@ -39,9 +38,9 @@ func (*MessageAction) Execute(a *ActionInfo) bool {
 			if imageKey == "" {
 				continue
 			}
-			base64, err := downloadAndEncodeImage(imageKey, a.info.msgId)
+			base64, err := a.downloadAndEncodeImage(imageKey, a.info.msgId)
 			if err != nil {
-				replyWithErrorMsg(*a.ctx, err, a.info.msgId)
+				a.replyWithErrorMsg(*a.ctx, err, a.info.msgId)
 				return false
 			}
 			base64s = append(base64s, base64)
@@ -62,10 +61,10 @@ func (*MessageAction) Execute(a *ActionInfo) bool {
 	chatResponseStream := make(chan string)
 	go func() {
 		if err := a.handler.gpt.StreamChat(*a.ctx, msg, chatResponseStream); err != nil {
-			fmt.Printf("StreamChat error: %v\n", err)
-			err := updateFinalCard(*a.ctx, "聊天失败", a.info.cardId, a.info.newTopic)
+			a.logger.Error("StreamChat error", zap.Error(err))
+			err := a.updateFinalCard(*a.ctx, "聊天失败", a.info.cardId, a.info.newTopic)
 			if err != nil {
-				fmt.Printf("updateFinalCard error: %v\n", err)
+				a.logger.Error("updateFinalCard error", zap.Error(err))
 				return
 			}
 		}
@@ -76,9 +75,9 @@ func (*MessageAction) Execute(a *ActionInfo) bool {
 		case <-timer.C:
 			a.logger.Debug("answer", zap.String("answer", answer))
 			if answer != "" {
-				err := UpdateTextCard(*a.ctx, answer, a.info.cardId, a.info.newTopic)
+				err := a.UpdateTextCard(*a.ctx, answer, a.info.cardId, a.info.newTopic)
 				if err != nil {
-					fmt.Printf("UpdateTextCard error: %v\n", err)
+					a.logger.Error("UpdateTextCard error", zap.Error(err))
 				}
 			}
 
@@ -86,11 +85,10 @@ func (*MessageAction) Execute(a *ActionInfo) bool {
 			if ok {
 				answer += res
 			} else {
-				fmt.Println("chatResponseStream closed")
 				timer.Stop()
-				err := updateFinalCard(*a.ctx, answer, a.info.cardId, a.info.newTopic)
+				err := a.updateFinalCard(*a.ctx, answer, a.info.cardId, a.info.newTopic)
 				if err != nil {
-					fmt.Printf("updateFinalCard error: %v\n", err)
+					a.logger.Error("updateFinalCard error", zap.Error(err))
 					return false
 				}
 				msg := append(msg, openai.ChatCompletionMessage{
@@ -103,19 +101,21 @@ func (*MessageAction) Execute(a *ActionInfo) bool {
 					fileName := *a.info.msgId + ".opus"
 					err := a.handler.gpt.TextToSpeech(*a.ctx, answer, fileName)
 					if err != nil {
+						a.logger.Error("TTS error", zap.Error(err))
 						return false
 					}
 					f, err := os.Open(fileName)
 					if err != nil {
-						fmt.Println("Error opening file:", err)
+						a.logger.Error("Error opening file", zap.Error(err))
 						return false
 					}
 					defer f.Close()
-					fileKey, err := uploadOpus(f, fileName)
+					fileKey, err := a.uploadOpus(f, fileName)
 					if err != nil {
 						a.logger.Error("文件上传失败", zap.Error(err))
+						return false
 					}
-					replyAudio(*a.ctx, fileKey, a.info.msgId)
+					a.replyAudio(*a.ctx, fileKey, a.info.msgId)
 				}
 				return false
 			}
@@ -125,12 +125,12 @@ func (*MessageAction) Execute(a *ActionInfo) bool {
 
 }
 
-func downloadAndEncodeImage(imageKey string, msgId *string) (string, error) {
+func (a *ActionInfo) downloadAndEncodeImage(imageKey string, msgId *string) (string, error) {
 	f := fmt.Sprintf("%s.png", imageKey)
 	defer os.Remove(f)
 
 	req := larkim.NewGetMessageResourceReqBuilder().MessageId(*msgId).FileKey(imageKey).Type("image").Build()
-	resp, err := initialization.GetLarkClient().Im.MessageResource.Get(context.Background(), req)
+	resp, err := a.larkClient.Im.MessageResource.Get(context.Background(), req)
 	if err != nil {
 		return "", err
 	}
@@ -139,8 +139,8 @@ func downloadAndEncodeImage(imageKey string, msgId *string) (string, error) {
 	return myopenai.GetBase64FromImage(f)
 }
 
-func replyWithErrorMsg(ctx context.Context, err error, msgId *string) {
-	replyMsg(ctx, fmt.Sprintf("🤖️：图片下载失败，请稍后再试～\n 错误信息: %v", err), msgId)
+func (a *ActionInfo) replyWithErrorMsg(ctx context.Context, err error, msgId *string) {
+	a.replyMsg(ctx, fmt.Sprintf("🤖️：图片下载失败，请稍后再试～\n 错误信息: %v", err), msgId)
 }
 
 func createMultipleVisionMessages(query string, base64Images []string, userId string) openai.ChatCompletionMessage {

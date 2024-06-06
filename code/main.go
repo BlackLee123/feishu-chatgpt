@@ -11,8 +11,6 @@ import (
 	"syscall"
 
 	"github.com/blacklee123/feishu-openai/handlers"
-	"github.com/blacklee123/feishu-openai/initialization"
-	"github.com/blacklee123/feishu-openai/services/openai"
 	"github.com/blacklee123/feishu-openai/version"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -22,6 +20,7 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 
+	lark "github.com/larksuite/oapi-sdk-go/v3"
 	"github.com/larksuite/oapi-sdk-go/v3/event/dispatcher"
 )
 
@@ -37,9 +36,23 @@ func main() {
 	fs.String("OPENAI_API_URL", "https://api.openai.com", "OPENAI_API_URL")
 	fs.String("HTTP_PROXY", "", "HTTP_PROXY")
 	fs.Bool("AZURE_ON", false, "AZURE_ON")
-	fs.String("AZURE_ENDPOINT", "", "OPENAI_KEY")
-	fs.String("AZURE_DEPLOYMENT_NAME", "", "OPENAI_KEY")
-	fs.String("AZURE_OPENAI_TOKEN", "", "OPENAI_KEY")
+
+	fs.String("AZURE_ENDPOINT", "", "AZURE_ENDPOINT")
+	fs.String("AZURE_APIVERSION", "", "AZURE_APIVERSION")
+	fs.String("AZURE_OPENAI_TOKEN", "", "AZURE_OPENAI_TOKEN")
+	fs.String("AZURE_DEPLOYMENT_NAME", "gpt-4o", "AZURE_DEPLOYMENT_NAME")
+	fs.String("AZURE_DALLE_DEPLOYMENT_NAME", "dall-e-3", "AZURE_DALLE_DEPLOYMENT_NAME")
+
+	fs.String("AZURE_WHISPER_ENDPOINT", "", "AZURE_WHISPER_ENDPOINT")
+	fs.String("AZURE_WHISPER_APIVERSION", "", "AZURE_WHISPER_APIVERSION")
+	fs.String("AZURE_WHISPER_OPENAI_TOKEN", "", "AZURE_WHISPER_OPENAI_TOKEN")
+	fs.String("AZURE_WHISPER_DEPLOYMENT_NAME", "whisper-1", "AZURE_WHISPER_DEPLOYMENT_NAME")
+
+	fs.String("AZURE_TTS_ENDPOINT", "", "AZURE_TTS_ENDPOINT")
+	fs.String("AZURE_TTS_APIVERSION", "", "AZURE_TTS_APIVERSION")
+	fs.String("AZURE_TTS_OPENAI_TOKEN", "", "AZURE_TTS_OPENAI")
+	fs.String("AZURE_TTS_DEPLOYMENT_NAME", "tts-1", "AZURE_TTS_DEPLOYMENT_NAME")
+
 	fs.String("config-path", "config", "config dir path")
 	fs.String("config", "config.yaml", "apiserver config file path")
 	fs.String("level", "info", "log level debug, info, warn, error, fatal or panic")
@@ -76,7 +89,7 @@ func main() {
 	stdLog := zap.RedirectStdLog(logger)
 	defer stdLog()
 
-	var config initialization.Config
+	var config handlers.Config
 	// 打印当前从viper读取到的所有配置
 	log.Printf("Current Viper settings: %v\n", viper.AllSettings())
 	if err := viper.Unmarshal(&config); err != nil {
@@ -84,10 +97,9 @@ func main() {
 	}
 	// 绑定设置到config结构体并确保值都成功加载
 	log.Printf("Unmarshaled configuration: %+v\n", config)
-
-	initialization.LoadLarkClient(config)
-	gpt := openai.NewChatGPT(config, logger)
-	handler := handlers.NewMessageHandler(gpt, config, logger)
+	larkClient := lark.NewClient(config.FeishuAppId, config.FeishuAppSecret)
+	gpt := handlers.NewChatGPT(config, logger)
+	handler := handlers.NewMessageHandler(gpt, config, logger, larkClient)
 
 	eventHandler := dispatcher.NewEventDispatcher(
 		config.FeishuVerificationToken, config.FeishuEncryptKey).

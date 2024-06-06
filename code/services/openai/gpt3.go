@@ -65,7 +65,7 @@ func (gpt *ChatGPT) Completions(ctx context.Context, msg []openai.ChatCompletion
 	)
 
 	if err != nil {
-		gpt.logger.Error("ChatCompletion error", zap.Error(err))
+		gpt.Logger.Error("ChatCompletion error", zap.Error(err))
 		return openai.ChatCompletionMessage{}, err
 	}
 
@@ -82,7 +82,7 @@ func (gpt *ChatGPT) StreamChat(ctx context.Context, msgs []openai.ChatCompletion
 	}
 	stream, err := gpt.Client.CreateChatCompletionStream(ctx, req)
 	if err != nil {
-		gpt.logger.Error("ChatCompletionStream error", zap.Error(err))
+		gpt.Logger.Error("ChatCompletionStream error", zap.Error(err))
 		return err
 	}
 	defer stream.Close()
@@ -93,12 +93,12 @@ func (gpt *ChatGPT) StreamChat(ctx context.Context, msgs []openai.ChatCompletion
 			return nil
 		}
 		if err != nil {
-			gpt.logger.Error("Stream error", zap.Error(err))
+			gpt.Logger.Error("Stream error", zap.Error(err))
 			return err
 		}
 		if len(response.Choices) > 0 {
 			responseStream <- response.Choices[0].Delta.Content
-			gpt.logger.Debug("response", zap.String("content", response.Choices[0].Delta.Content))
+			gpt.Logger.Debug("response", zap.String("content", response.Choices[0].Delta.Content))
 		}
 
 	}

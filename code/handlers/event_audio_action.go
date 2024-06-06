@@ -19,7 +19,7 @@ func (*AudioAction) Execute(a *ActionInfo) bool {
 	fileKey := a.info.fileKey
 	msgId := a.info.msgId
 
-	f, err := downloadOpus(fileKey, msgId)
+	f, err := a.downloadOpus(fileKey, msgId)
 	if err != nil {
 		fmt.Println(err)
 		return false
@@ -34,7 +34,7 @@ func (*AudioAction) Execute(a *ActionInfo) bool {
 	if err != nil {
 		fmt.Println(err)
 
-		sendMsg(*a.ctx, fmt.Sprintf("🤖️：语音转换失败，请稍后再试～\n错误信息: %v", err), a.info.msgId)
+		a.sendMsg(*a.ctx, fmt.Sprintf("🤖️：语音转换失败，请稍后再试～\n错误信息: %v", err), a.info.msgId)
 		return false
 	}
 
@@ -42,7 +42,7 @@ func (*AudioAction) Execute(a *ActionInfo) bool {
 	//fmt.Println("text: ", text)
 	a.info.qParsed = text
 	if len(a.info.qParsed) == 0 {
-		sendMsg(*a.ctx, "🤖️：你想知道什么呢~", a.info.chatId)
+		a.sendMsg(*a.ctx, "🤖️：你想知道什么呢~", a.info.chatId)
 		fmt.Println("msgId", *a.info.msgId,
 			"message.text is empty")
 

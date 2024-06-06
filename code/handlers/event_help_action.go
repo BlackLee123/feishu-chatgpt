@@ -16,7 +16,7 @@ func (*HelpAction) Execute(a *ActionInfo) bool {
 	// 	return false
 	// }
 	if _, foundHelp := utils.EitherTrimEqual(a.info.qParsed, "/help", "帮助"); foundHelp {
-		sendHelpCard(*a.ctx, a.info.sessionId, a.info.msgId)
+		a.sendHelpCard(*a.ctx, a.info.sessionId, a.info.msgId)
 		return false
 	}
 	return true

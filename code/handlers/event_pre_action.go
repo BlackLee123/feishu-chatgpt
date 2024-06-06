@@ -15,7 +15,7 @@ func (*PreAction) Execute(a *ActionInfo) bool {
 		ifNewTopic = false
 	}
 
-	cardId, err := sendOnProcessCard(*a.ctx, a.info.sessionId, a.info.msgId, ifNewTopic)
+	cardId, err := a.sendOnProcessCard(*a.ctx, a.info.sessionId, a.info.msgId, ifNewTopic)
 	if err != nil {
 		return false
 	}

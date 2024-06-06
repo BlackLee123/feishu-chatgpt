@@ -3,8 +3,7 @@ package handlers
 import (
 	"context"
 
-	"github.com/blacklee123/feishu-openai/initialization"
-
+	lark "github.com/larksuite/oapi-sdk-go/v3"
 	"go.uber.org/zap"
 )
 
@@ -22,11 +21,12 @@ type MsgInfo struct {
 	sessionId   *string
 }
 type ActionInfo struct {
-	handler *MessageHandler
-	ctx     *context.Context
-	info    *MsgInfo
-	logger  *zap.Logger
-	config  initialization.Config
+	handler    *MessageHandler
+	ctx        *context.Context
+	info       *MsgInfo
+	logger     *zap.Logger
+	config     Config
+	larkClient *lark.Client
 }
 
 type Action interface {
