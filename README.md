@@ -27,30 +27,17 @@
 ### OpenAI部署
 
 ```bash
-docker run -d --restart=always --name feishu-openai \
---env FEISHUAPP_ID=xxx \
---env FEISHUAPP_SECRET=xxx \
---env FEISHU_ENCRYPT_KEY=xxx \
---env FEISHU_VERIFICATION_TOKEN=xxx \
---env OPENAI_MODEL=gpt-4o \
---env OPENAI_KEY=sk-xxx1 \
-blacklee123/feishu-openai:latest
+cp .env.sample .env 
+# edit .env set the required field
+docker compose up -d
 ```
 
 ### Azure部署
 
 ```bash
-docker run -d --restart=always --name feishu-openai \
---env FEISHUAPP_ID=xxx \
---env FEISHUAPP_SECRET=xxx \
---env FEISHU_ENCRYPT_KEY=xxx \
---env FEISHU_VERIFICATION_TOKEN=xxx \
---env OPENAI_MODEL=gpt-4o \
---env AZURE_ON=true \
---env AZURE_ENDPOINT=your_end_point \
---env AZURE_DEPLOYMENT_NAME=gpt-4o \
---env AZURE_OPENAI_TOKEN=your_token
-blacklee123/feishu-openai:latest
+cp .env.azure.sample .env.azure
+# edit .env.azure set the required field
+docker compose -f compose.azure.yaml up -d
 ```
 
 ## 详细配置步骤

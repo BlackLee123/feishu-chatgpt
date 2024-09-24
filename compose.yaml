@@ -1,0 +1,12 @@
+name: feishu-openai
+services:
+  feishu-openai:
+    image: blacklee123/feishu-openai
+    restart: always
+    environment:
+      FEISHU_APP_ID: ${FEISHU_APP_ID:?error}
+      FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:?error}
+      FEISHU_ENCRYPT_KEY: ${FEISHU_ENCRYPT_KEY:?error}
+      FEISHU_VERIFICATION_TOKEN: ${FEISHU_VERIFICATION_TOKEN:?error}
+      OPENAI_MODEL: ${OPENAI_MODEL:?error}
+      OPENAI_KEY: ${OPENAI_KEY:?error}

@@ -39,3 +39,5 @@ docker.md
 .DS_Store
 **/.DS_Store
 *.pem
+.env
+.env.azure
